@@ -1,0 +1,10 @@
+-r requirements.in
+
+hypothesis
+mypy
+pip-tools
+py-spy
+pytest
+pytest-cov
+ruff
+scalene

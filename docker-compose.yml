@@ -1,0 +1,316 @@
+version: "3.8"
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: elara-redis
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    command: ["sh", "-c", "redis-server --appendonly yes --requirepass \"$${REDIS_PASSWORD}\""]
+    volumes:
+      - redis-data:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+    networks:
+      - elara-net
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$${REDIS_PASSWORD}\" redis-cli ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+    cpus: "0.50"
+    mem_limit: 512m
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: elara-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-elara}
+      POSTGRES_USER: ${POSTGRES_USER:-elara}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    networks:
+      - elara-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-elara} -d ${POSTGRES_DB:-elara}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 1G
+    cpus: "1.00"
+    mem_limit: 1g
+    restart: unless-stopped
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: elara-mosquitto
+    ports:
+      - "127.0.0.1:1883:1883"
+    volumes:
+      - mosquitto-data:/mosquitto/data
+    networks:
+      - elara-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+    cpus: "0.25"
+    mem_limit: 128m
+    restart: unless-stopped
+
+  elara-core:
+    build: .
+    container_name: elara-core
+    command: ["python", "apps/elara_core/main.py"]
+    env_file:
+      - .env
+      - .env.docker
+    environment:
+      REDIS_URL: ${REDIS_URL:-redis://:${REDIS_PASSWORD}@redis:6379/0}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://${POSTGRES_USER:-elara}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-elara}}
+      REDIS_EVENT_BUS_REQUIRED: "1"
+      REDIS_STREAM_EVENT_BUS_ENABLED: "1"
+      REDIS_STREAM_EVENT_BUS_REQUIRED: "1"
+      REDIS_STREAM_EVENT_KEY: "elara:streams:trade_signal"
+      TRADING_FILE_IPC_FALLBACK_ENABLED: "0"
+      TRADING_STATUS_FILE_FALLBACK_ENABLED: "0"
+      CORE_HEARTBEAT_FILE_FALLBACK_ENABLED: "0"
+      TRADING_IPC_ENABLED: "0"
+      TRADER_API_BASE_URL: http://elara-trader:8768
+      TRADING_IPC_TOKEN: ${TRADING_IPC_TOKEN:?TRADING_IPC_TOKEN is required for Docker IPC}
+      ENABLE_TRADING_SKILL: "1"
+      ENABLE_TRADING_ORCHESTRATOR: "0"
+      LOG_JSON: ${LOG_JSON:-1}
+      OBSERVABILITY_ENABLED: ${OBSERVABILITY_ENABLED:-1}
+      PROMETHEUS_METRICS_ENABLED: ${PROMETHEUS_METRICS_ENABLED:-1}
+      PROMETHEUS_METRICS_PUBLIC: ${PROMETHEUS_METRICS_PUBLIC:-1}
+      PROMETHEUS_METRICS_TOKEN: ${PROMETHEUS_METRICS_TOKEN:-}
+      OTEL_ENABLED: ${OTEL_ENABLED:-0}
+      OTEL_SERVICE_NAME: elara-core
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://tempo:4317}
+      OTEL_EXPORTER_CONSOLE: ${OTEL_EXPORTER_CONSOLE:-0}
+      MEMORY_HARDENING_WARN_ON_SWAP: "1"
+      MEMORY_HARDENING_REQUIRE_MLOCK: ${MEMORY_HARDENING_REQUIRE_MLOCK:-0}
+    ports:
+      - "${ELARA_CORE_HOST_BIND:-127.0.0.1}:5000:5000"
+    volumes:
+      - ./logs:/app/logs
+      - ./runtime:/app/runtime
+    cap_add:
+      - IPC_LOCK
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - elara-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5000/health/ready >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 1G
+    cpus: "1.00"
+    mem_limit: 1g
+    restart: unless-stopped
+
+  elara-trader:
+    build: .
+    container_name: elara-trader
+    command: ["python", "apps/elara_trader/main.py"]
+    env_file:
+      - .env
+      - .env.docker
+    environment:
+      REDIS_URL: ${REDIS_URL:-redis://:${REDIS_PASSWORD}@redis:6379/0}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://${POSTGRES_USER:-elara}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-elara}}
+      REDIS_EVENT_BUS_REQUIRED: "1"
+      REDIS_STREAM_EVENT_BUS_ENABLED: "1"
+      REDIS_STREAM_EVENT_BUS_REQUIRED: "1"
+      REDIS_STREAM_EVENT_KEY: "elara:streams:trade_signal"
+      TRADING_FILE_IPC_FALLBACK_ENABLED: "0"
+      TRADING_STATUS_FILE_FALLBACK_ENABLED: "0"
+      CORE_HEARTBEAT_FILE_FALLBACK_ENABLED: "0"
+      ENABLE_TRADING_SKILL: "0"
+      ENABLE_TRADING_ORCHESTRATOR: "0"
+      TRADER_REQUIRE_CORE_HEARTBEAT: "1"
+      TRADING_IPC_ENABLED: "1"
+      TRADING_IPC_HOST: "0.0.0.0"
+      TRADING_IPC_PORT: "8768"
+      TRADING_IPC_TOKEN: ${TRADING_IPC_TOKEN:?TRADING_IPC_TOKEN is required for Docker IPC}
+      LOG_JSON: ${LOG_JSON:-1}
+      OBSERVABILITY_ENABLED: ${OBSERVABILITY_ENABLED:-1}
+      PROMETHEUS_METRICS_ENABLED: ${PROMETHEUS_METRICS_ENABLED:-1}
+      PROMETHEUS_METRICS_PUBLIC: ${PROMETHEUS_METRICS_PUBLIC:-1}
+      PROMETHEUS_METRICS_TOKEN: ${PROMETHEUS_METRICS_TOKEN:-}
+      OTEL_ENABLED: ${OTEL_ENABLED:-0}
+      OTEL_SERVICE_NAME: elara-trader
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://tempo:4317}
+      OTEL_EXPORTER_CONSOLE: ${OTEL_EXPORTER_CONSOLE:-0}
+      MEMORY_HARDENING_WARN_ON_SWAP: "1"
+      MEMORY_HARDENING_REQUIRE_MLOCK: ${MEMORY_HARDENING_REQUIRE_MLOCK:-0}
+    volumes:
+      - ./logs:/app/logs
+      - ./runtime:/app/runtime
+    cap_add:
+      - IPC_LOCK
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - elara-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8768/status >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 1G
+    cpus: "1.00"
+    mem_limit: 1g
+    restart: unless-stopped
+
+  prometheus:
+    image: ${PROMETHEUS_IMAGE:-prom/prometheus:latest}
+    container_name: elara-prometheus
+    profiles:
+      - observability
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    volumes:
+      - ./deploy/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/observability/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    networks:
+      - elara-net
+    depends_on:
+      elara-core:
+        condition: service_healthy
+      elara-trader:
+        condition: service_healthy
+    restart: unless-stopped
+
+  grafana:
+    image: ${GRAFANA_IMAGE:-grafana/grafana:latest}
+    container_name: elara-grafana
+    profiles:
+      - observability
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./deploy/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "127.0.0.1:3000:3000"
+    networks:
+      - elara-net
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+    restart: unless-stopped
+
+  loki:
+    image: ${LOKI_IMAGE:-grafana/loki:latest}
+    container_name: elara-loki
+    profiles:
+      - observability
+    command: ["-config.file=/etc/loki/loki.yml"]
+    volumes:
+      - ./deploy/observability/loki/loki.yml:/etc/loki/loki.yml:ro
+      - loki-data:/loki
+    ports:
+      - "127.0.0.1:3100:3100"
+    networks:
+      - elara-net
+    restart: unless-stopped
+
+  promtail:
+    image: ${PROMTAIL_IMAGE:-grafana/promtail:latest}
+    container_name: elara-promtail
+    profiles:
+      - observability
+    command: ["-config.file=/etc/promtail/promtail.yml"]
+    volumes:
+      - ./deploy/observability/promtail/promtail.yml:/etc/promtail/promtail.yml:ro
+      - ./logs:/var/log/elara:ro
+      - ./runtime:/var/log/elara/runtime:ro
+    networks:
+      - elara-net
+    depends_on:
+      - loki
+    restart: unless-stopped
+
+  tempo:
+    image: ${TEMPO_IMAGE:-grafana/tempo:latest}
+    container_name: elara-tempo
+    profiles:
+      - observability
+    command: ["-config.file=/etc/tempo/tempo.yml"]
+    volumes:
+      - ./deploy/observability/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+      - tempo-data:/tmp/tempo
+    ports:
+      - "127.0.0.1:3200:3200"
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
+    networks:
+      - elara-net
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+  grafana-data:
+  loki-data:
+  mosquitto-data:
+  postgres-data:
+  prometheus-data:
+  tempo-data:
+
+networks:
+  elara-net:
+    driver: bridge
+

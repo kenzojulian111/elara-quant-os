@@ -1,0 +1,30 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    runtime: elara
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - prometheus:9090
+
+  - job_name: elara-core
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - elara-core:5000
+        labels:
+          service: elara-core
+
+  - job_name: elara-trader
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - elara-trader:8768
+        labels:
+          service: elara-trader

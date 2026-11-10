@@ -1,0 +1,12 @@
+DECISION_EVENT = "decision"
+EXECUTION_EVENT = "execution"
+RISK_EVENT = "risk"
+GOVERNANCE_EVENT = "governance"
+PORTFOLIO_EVENT = "portfolio"
+ATTENTION_EVENT = "attention"
+TEMPORAL_EVENT = "temporal"
+OBJECTIVE_EVENT = "objective"
+REFLECTION_EVENT = "reflection"
+META_EVENT = "meta_cognition"
+MARKET_DATA_EVENT = "market_data"
+

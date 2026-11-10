@@ -1,0 +1,42 @@
+[project]
+name = "elara-unified"
+version = "0.1.0"
+description = "Elara trading decision platform runtime."
+requires-python = ">=3.12"
+readme = "README.md"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+exclude = [
+    "build",
+    "brain_storage",
+    "documents",
+    "runtime",
+    "instance",
+]
+
+[tool.ruff.lint]
+select = ["F401", "F821", "F841", "E9"]
+fixable = ["F401", "F841"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+follow_imports = "skip"
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = false
+files = [
+    "main.py",
+    "apps/elara_core/main.py",
+    "apps/elara_trader/main.py",
+    "tests/test_exchange_precision.py",
+    "tests/test_rate_limiter.py",
+    "tests/test_runtime_hot_reload.py",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+

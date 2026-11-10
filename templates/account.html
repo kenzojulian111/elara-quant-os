@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elara Account Center</title>
+    <meta name="csrf-token" content="{{ csrf_token_value }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+1p:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/elara-theme.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/elara-account.css') }}">
+</head>
+<body>
+<main class="account-shell">
+    <section class="account-topbar card">
+        <div>
+            <h1>Account Center</h1>
+            <p id="whoami">Memuat profile...</p>
+        </div>
+        <div class="toolbar">
+            <button class="btn" id="open-portal" type="button">Back to Portal</button>
+            <button class="btn danger" id="logout-btn" type="button">Logout</button>
+        </div>
+    </section>
+
+    <section class="card">
+        <h2>Profile</h2>
+        <div class="meta-grid">
+            <div><span>Email</span><strong id="meta-email">-</strong></div>
+            <div><span>Role</span><strong id="meta-role">-</strong></div>
+            <div><span>Email Verified</span><strong id="meta-verified">-</strong></div>
+            <div><span>MFA Enabled</span><strong id="meta-mfa">-</strong></div>
+        </div>
+
+        <form id="profile-form" class="stack-form">
+            <label for="profile-name">Display Name</label>
+            <input id="profile-name" type="text" maxlength="80" placeholder="your display name">
+            <button class="btn primary" id="profile-save-btn" type="submit">Save Profile</button>
+        </form>
+    </section>
+
+    <section class="card">
+        <h2>Change Password</h2>
+        <form id="password-form" class="stack-form">
+            <label for="current-password">Current Password</label>
+            <input id="current-password" type="password" autocomplete="current-password" required>
+            <label for="new-password">New Password</label>
+            <input id="new-password" type="password" autocomplete="new-password" required>
+            <label for="new-password-confirm">Confirm New Password</label>
+            <input id="new-password-confirm" type="password" autocomplete="new-password" required>
+            <button class="btn primary" id="password-save-btn" type="submit">Update Password</button>
+        </form>
+    </section>
+
+    <section class="card">
+        <h2>Email Verification</h2>
+        <form id="verify-request-form" class="stack-form">
+            <label for="verify-email">Email (optional)</label>
+            <input id="verify-email" type="email" placeholder="leave empty to use current session email">
+            <button class="btn" id="verify-request-btn" type="submit">Request Verify Token</button>
+        </form>
+        <form id="verify-confirm-form" class="stack-form">
+            <label for="verify-token">Verification Token</label>
+            <input id="verify-token" type="text" maxlength="512" placeholder="paste token" required>
+            <button class="btn" id="verify-confirm-btn" type="submit">Confirm Verification</button>
+        </form>
+    </section>
+
+    <section class="card" id="admin-mfa-card" hidden>
+        <h2>Admin 2FA (TOTP)</h2>
+        <div class="mfa-note" id="mfa-note">Setup authenticator secret terlebih dulu, lalu enable dengan OTP 6 digit.</div>
+        <div class="mfa-secret" id="mfa-secret" hidden>
+            <div><span>Secret</span><code id="mfa-secret-text">-</code></div>
+            <div><span>otpauth URI</span><code id="mfa-uri-text">-</code></div>
+        </div>
+        <div class="row-actions">
+            <button class="btn" id="mfa-setup-btn" type="button">Generate / Rotate Secret</button>
+            <button class="btn" id="mfa-refresh-btn" type="button">Refresh Status</button>
+        </div>
+        <form id="mfa-enable-form" class="stack-form">
+            <label for="mfa-enable-otp">OTP to Enable</label>
+            <input id="mfa-enable-otp" type="text" maxlength="6" inputmode="numeric" placeholder="6 digit">
+            <button class="btn primary" id="mfa-enable-btn" type="submit">Enable MFA</button>
+        </form>
+        <form id="mfa-disable-form" class="stack-form">
+            <label for="mfa-disable-otp">OTP to Disable</label>
+            <input id="mfa-disable-otp" type="text" maxlength="6" inputmode="numeric" placeholder="6 digit">
+            <button class="btn danger" id="mfa-disable-btn" type="submit">Disable MFA</button>
+        </form>
+    </section>
+
+    <div class="error" id="error-msg"></div>
+    <div class="info" id="info-msg"></div>
+</main>
+
+<script>
+    const csrfToken = (document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '').trim();
+    let currentProfile = null;
+
+    const errorMsg = document.getElementById('error-msg');
+    const infoMsg = document.getElementById('info-msg');
+
+    function setError(message = '') {
+        errorMsg.textContent = message || '';
+        errorMsg.style.display = message ? 'block' : 'none';
+    }
+
+    function setInfo(message = '') {
+        infoMsg.textContent = message || '';
+        infoMsg.style.display = message ? 'block' : 'none';
+    }
+
+    function clearNotice() {
+        setError('');
+        setInfo('');
+    }
+
+    async function fetchJson(url, opts = {}) {
+        const headers = {
+            ...(opts.headers || {}),
+            ...(csrfToken ? { 'X-CSRFToken': csrfToken, 'X-CSRF-Token': csrfToken } : {}),
+        };
+        const res = await fetch(url, { ...opts, headers });
+        if (res.status === 401) {
+            window.location.href = '/login';
+            return null;
+        }
+        const data = await res.json().catch(() => ({}));
+        return { ok: res.ok, status: res.status, data };
+    }
+
+    function normalizeOtp(value) {
+        return String(value || '').replace(/\D/g, '').slice(0, 6);
+    }
+
+    function renderProfile(profile) {
+        currentProfile = profile || {};
+        const email = currentProfile.email || '-';
+        const name = currentProfile.name || '-';
+        const role = String(currentProfile.role || 'user').toUpperCase();
+        const security = currentProfile.security || {};
+
+        document.getElementById('whoami').innerText = `${name} (${email})`;
+        document.getElementById('meta-email').innerText = email;
+        document.getElementById('meta-role').innerText = role;
+        document.getElementById('meta-verified').innerText = security.email_verified ? 'YES' : 'NO';
+        document.getElementById('meta-mfa').innerText = security.mfa_enabled ? 'YES' : 'NO';
+        document.getElementById('profile-name').value = currentProfile.name || '';
+        document.getElementById('verify-email').value = currentProfile.email || '';
+
+        const isAdmin = ['admin', 'superuser'].includes(String(currentProfile.role || '').toLowerCase());
+        document.getElementById('admin-mfa-card').hidden = !isAdmin;
+    }
+
+    function renderMfaStatus(data) {
+        if (!data) return;
+        document.getElementById('meta-mfa').innerText = data.mfa_enabled ? 'YES' : 'NO';
+        const note = data.mfa_enabled
+            ? 'MFA aktif. Gunakan OTP valid untuk disable jika diperlukan.'
+            : 'MFA belum aktif. Generate secret lalu enable.';
+        document.getElementById('mfa-note').innerText = note;
+    }
+
+    async function loadProfile() {
+        const out = await fetchJson('/api/account/profile');
+        if (!out) return;
+        if (!out.ok) {
+            setError((out.data && out.data.message) || 'Gagal load profile.');
+            return;
+        }
+        renderProfile(out.data || {});
+    }
+
+    async function refreshMfaStatus() {
+        const out = await fetchJson('/api/account/mfa/status');
+        if (!out || !out.ok) return;
+        renderMfaStatus(out.data || {});
+    }
+
+    document.getElementById('profile-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        clearNotice();
+        const name = document.getElementById('profile-name').value.trim();
+        if (!name) {
+            setError('Display name wajib diisi.');
+            return;
+        }
+        const out = await fetchJson('/api/account/profile', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name }),
+        });
+        if (!out) return;
+        if (!out.ok) {
+            setError((out.data && out.data.message) || 'Update profile gagal.');
+            return;
+        }
+        setInfo('Profile berhasil diperbarui.');
+        await loadProfile();
+    });
+
+    document.getElementById('password-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        clearNotice();
+        const currentPassword = document.getElementById('current-password').value;
+        const newPassword = document.getElementById('new-password').value;
+        const confirmPassword = document.getElementById('new-password-confirm').value;
+
+        if (!currentPassword || !newPassword) {
+            setError('Field password wajib diisi.');
+            return;
+        }
+        if (newPassword.length < 8) {
+            setError('Password baru minimal 8 karakter.');
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            setError('Konfirmasi password tidak sama.');
+            return;
+        }
+
+        const out = await fetchJson('/api/account/password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+        });
+        if (!out) return;
+        if (!out.ok) {
+            setError((out.data && out.data.message) || 'Gagal update password.');
+            return;
+        }
+        setInfo((out.data && out.data.message) || 'Password diperbarui.');
+        document.getElementById('current-password').value = '';
+        document.getElementById('new-password').value = '';
+        document.getElementById('new-password-confirm').value = '';
+    });
+
+    document.getElementById('verify-request-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        clearNotice();
+        const email = document.getElementById('verify-email').value.trim();
+        const out = await fetchJson('/api/email/verify/request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+        });
+        if (!out) return;
+        if (!out.ok) {
+            setError((out.data && out.data.message) || 'Request verify token gagal.');
+            return;
+        }
+        if (out.data && out.data.verification_token) {
+            document.getElementById('verify-token').value = out.data.verification_token;
+        }
+        setInfo((out.data && out.data.message) || 'Request verifikasi berhasil.');
+    });
+
+    document.getElementById('verify-confirm-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        clearNotice();
+        const token = document.getElementById('verify-token').value.trim();
+        if (!token) {
+            setError('Token verifikasi wajib diisi.');
+            return;
+        }
+        const out = await fetchJson('/api/email/verify/confirm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token }),
+        });
+        if (!out) return;
+        if (!out.ok) {
+            setError((out.data && out.data.message) || 'Verifikasi gagal.');
+            return;
+        }
+        setInfo((out.data && out.data.message) || 'Email berhasil diverifikasi.');
+        document.getElementById('verify-token').value = '';
+        await loadProfile();
+        await refreshMfaStatus();
+    });
+
+    document.getElementById('mfa-setup-btn').addEventListener('click', async () => {
+        clearNotice();
+        const out = await fetchJson('/api/account/mfa/setup', { method: 'POST' });
+        if (!out) return;
+        if (!out.ok) {
+            setError((out.data && out.data.message) || 'Gagal setup MFA.');
+            return;
+        }
+        const card = document.getElementById('mfa-secret');
+        card.hidden = false;
+        document.getElementById('mfa-secret-text').innerText = out.data.secret || '-';
+        document.getElementById('mfa-uri-text').innerText = out.data.otpauth_uri || '-';
+        setInfo('Secret MFA baru diterbitkan. Input ke authenticator lalu enable dengan OTP.');
+        await refreshMfaStatus();
+    });
+
+    document.getElementById('mfa-enable-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        clearNotice();
+        const otp = normalizeOtp(document.getElementById('mfa-enable-otp').value);
+        if (otp.length !== 6) {
+            setError('OTP harus 6 digit.');
+            return;
+        }
+        const out = await fetchJson('/api/account/mfa/enable', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ otp }),
+        });
+        if (!out) return;
+        if (!out.ok) {
+            setError((out.data && out.data.message) || 'Enable MFA gagal.');
+            return;
+        }
+        setInfo('MFA admin berhasil diaktifkan.');
+        document.getElementById('mfa-enable-otp').value = '';
+        await loadProfile();
+        await refreshMfaStatus();
+    });
+
+    document.getElementById('mfa-disable-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        clearNotice();
+        const otp = normalizeOtp(document.getElementById('mfa-disable-otp').value);
+        if (otp.length !== 6) {
+            setError('OTP harus 6 digit.');
+            return;
+        }
+        const out = await fetchJson('/api/account/mfa/disable', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ otp }),
+        });
+        if (!out) return;
+        if (!out.ok) {
+            setError((out.data && out.data.message) || 'Disable MFA gagal.');
+            return;
+        }
+        setInfo('MFA admin berhasil dimatikan.');
+        document.getElementById('mfa-disable-otp').value = '';
+        await loadProfile();
+        await refreshMfaStatus();
+    });
+
+    document.getElementById('mfa-refresh-btn').addEventListener('click', async () => {
+        clearNotice();
+        await refreshMfaStatus();
+        setInfo('MFA status diperbarui.');
+    });
+
+    document.getElementById('open-portal').addEventListener('click', () => {
+        window.location.href = '/portal';
+    });
+
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+        try { await fetchJson('/api/logout', { method: 'POST' }); } catch (_) {}
+        window.location.href = '/login';
+    });
+
+    (async () => {
+        await loadProfile();
+        await refreshMfaStatus();
+    })();
+</script>
+</body>
+</html>
+

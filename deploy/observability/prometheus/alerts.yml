@@ -1,0 +1,38 @@
+groups:
+  - name: elara-runtime
+    rules:
+      - alert: ElaraCoreHttp5xx
+        expr: sum(rate(elara_http_requests_total{status=~"5.."}[5m])) > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Elara core is returning 5xx responses.
+          description: HTTP 5xx responses have been observed for more than two minutes.
+
+      - alert: ElaraRuntimeSanityLow
+        expr: min(elara_runtime_sanity_score) < 70
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Elara runtime sanity score is low.
+          description: Runtime sanity has dropped below the Q1 observability threshold.
+
+      - alert: ElaraTraderStatusStale
+        expr: max(elara_trader_status_stale) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: Trader status heartbeat is stale.
+          description: The trader status payload is older than its configured freshness budget.
+
+      - alert: ElaraExchangeOrderFailures
+        expr: sum(rate(elara_exchange_order_events_total{status=~"failed|rejected"}[5m])) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: Exchange order failures or rejections detected.
+          description: Live or simulated execution paths are reporting failed or rejected orders.

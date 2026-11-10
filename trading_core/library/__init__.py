@@ -1,0 +1,2 @@
+"""Strategy library storage."""
+

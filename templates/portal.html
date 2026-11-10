@@ -1,0 +1,2897 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elara Unified Portal</title>
+    <meta name="csrf-token" content="{{ csrf_token_value }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+1p:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/elara-theme.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/elara-portal.css') }}">
+</head>
+<body data-theme="kyoto">
+<main class="shell bento-shell">
+    <section class="panel topbar bento-card bento-hero">
+        <div class="title-wrap">
+            <span class="kicker">Unified Control Plane</span>
+            <h1 class="title">Elara Multi-User Portal</h1>
+            <div class="sub" id="whoami">Memuat profil...</div>
+            <div class="sub legacy-note" id="legacy-banner" hidden></div>
+        </div>
+        <div class="toolbar">
+            <span class="badge" id="role-badge">ROLE</span>
+            <span class="badge market-stream-badge market-stream-boot" id="market-stream-status" title="Market stream status">MARKET INIT</span>
+            <button class="btn" id="theme-toggle-btn" type="button">Switch to Tokyo Night</button>
+            {% if legacy_enabled %}
+            <button class="btn primary" id="open-legacy" type="button">Legacy Dashboard</button>
+            {% endif %}
+            {% if terminal_enabled %}
+            <button class="btn" id="open-terminal" type="button">Terminal (Deprecated)</button>
+            {% endif %}
+            <button class="btn" id="open-account" type="button">Account</button>
+            <button class="btn danger" id="logout-btn" type="button">Logout</button>
+        </div>
+    </section>
+
+    <section class="panel soft view-toggle-panel bento-card bento-slim" id="view-toggle-panel" hidden>
+        <h2 class="section-title">Workspace Mode</h2>
+        <div class="view-toggle-row">
+            <button class="btn" id="view-user-btn" type="button">User View</button>
+            <button class="btn" id="view-admin-btn" type="button">Admin View</button>
+            <span class="muted" id="view-status">Role check...</span>
+        </div>
+    </section>
+
+    <section class="panel soft command-panel bento-card bento-command">
+        <h2 class="section-title">Quick Command Bus</h2>
+        <div class="cmd-row">
+            <input id="quick-command" placeholder="Kirim command cepat...">
+            <button class="btn primary" id="send-command" type="button">Send</button>
+            <span id="cmd-status" class="muted"></span>
+        </div>
+    </section>
+
+    <div id="user-workspace" class="workspace active-workspace bento-grid">
+        <section class="panel bento-card bento-user-main">
+            <h2 class="section-title">Ringkasan User</h2>
+            <div class="grid">
+                <div class="stat">
+                    <h3>Equity</h3>
+                    <div class="val" id="stat-equity">-</div>
+                </div>
+                <div class="stat">
+                    <h3>Win Rate</h3>
+                    <div class="val" id="stat-winrate">-</div>
+                </div>
+                <div class="stat">
+                    <h3>Trade Count</h3>
+                    <div class="val" id="stat-trades">-</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel soft bento-card bento-user-health">
+            <h2 class="section-title">Kesehatan Sistem</h2>
+            <div class="muted health-legend" id="health-legend-user">Threshold legend loading...</div>
+            <div class="grid">
+                <div class="stat">
+                    <h3>CPU</h3>
+                    <div class="val" id="health-cpu">-</div>
+                </div>
+                <div class="stat">
+                    <h3>RAM</h3>
+                    <div class="val" id="health-mem">-</div>
+                </div>
+                <div class="stat">
+                    <h3>DB Locks/min</h3>
+                    <div class="val" id="health-dblocks">-</div>
+                </div>
+                <div class="stat">
+                    <h3>DB Contention/min</h3>
+                    <div class="val" id="health-db-contention">-</div>
+                </div>
+                <div class="stat">
+                    <h3>Skill Profile</h3>
+                    <div class="val" id="health-skill-profile">-</div>
+                </div>
+                <div class="stat">
+                    <h3>Skill Hit Rate</h3>
+                    <div class="val" id="health-skill-hitrate">-</div>
+                </div>
+                <div class="stat">
+                    <h3>Policy Block</h3>
+                    <div class="val" id="health-skill-blockrate">-</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel bento-card bento-user-log">
+            <h2 class="section-title">Decision Log (XAI)</h2>
+            <div class="muted" id="decision-note">Alasan keputusan trading terbaru.</div>
+            <div class="table-wrap table-wrap-top">
+                <table id="decision-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Symbol</th>
+                            <th>Direction</th>
+                            <th>Status</th>
+                            <th>Reason</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="panel soft bento-card bento-user-market">
+            <h2 class="section-title">Realtime Market Pulse</h2>
+            <div class="market-grid">
+                <article class="market-card">
+                    <div class="market-head">
+                        <h3>Crypto</h3>
+                        <span class="market-updated" id="user-crypto-updated">-</span>
+                    </div>
+                    <div class="market-controls">
+                        <select id="user-crypto-symbol-select" title="Pilih crypto symbol"></select>
+                        <select id="user-crypto-timeframe-select" title="Pilih timeframe">
+                            <option value="15m">15m</option>
+                            <option value="1h" selected>1h</option>
+                            <option value="4h">4h</option>
+                            <option value="1d">1d</option>
+                            <option value="all">all</option>
+                        </select>
+                    </div>
+                    <div class="market-meta">
+                        <strong id="user-crypto-symbol">-</strong>
+                        <span id="user-crypto-price">-</span>
+                        <span id="user-crypto-change">-</span>
+                    </div>
+                    <canvas id="user-crypto-canvas"></canvas>
+                </article>
+                <article class="market-card">
+                    <div class="market-head">
+                        <h3>Saham</h3>
+                        <span class="market-updated" id="user-stock-updated">-</span>
+                    </div>
+                    <div class="market-controls">
+                        <select id="user-stock-symbol-select" title="Pilih saham symbol"></select>
+                        <select id="user-stock-timeframe-select" title="Pilih timeframe">
+                            <option value="15m">15m</option>
+                            <option value="1h" selected>1h</option>
+                            <option value="4h">4h</option>
+                            <option value="1d">1d</option>
+                            <option value="all">all</option>
+                        </select>
+                    </div>
+                    <div class="market-meta">
+                        <strong id="user-stock-symbol">-</strong>
+                        <span id="user-stock-price">-</span>
+                        <span id="user-stock-change">-</span>
+                    </div>
+                    <canvas id="user-stock-canvas"></canvas>
+                </article>
+            </div>
+        </section>
+    </div>
+
+    <div id="admin-workspace" class="workspace bento-grid">
+        <section class="panel bento-card bento-admin-main">
+            <h2 class="section-title">Admin Mission Control</h2>
+            <div class="grid">
+                <div class="stat">
+                    <h3>Total Users</h3>
+                    <div class="val" id="admin-users-total">-</div>
+                </div>
+                <div class="stat">
+                    <h3>Admins</h3>
+                    <div class="val" id="admin-users-admin">-</div>
+                </div>
+                <div class="stat">
+                    <h3>Superusers</h3>
+                    <div class="val" id="admin-users-super">-</div>
+                </div>
+                <div class="stat">
+                    <h3>Portfolio Equity</h3>
+                    <div class="val" id="admin-stat-equity">-</div>
+                </div>
+                <div class="stat">
+                    <h3>Win Rate</h3>
+                    <div class="val" id="admin-stat-winrate">-</div>
+                </div>
+                <div class="stat">
+                    <h3>Trade Count</h3>
+                    <div class="val" id="admin-stat-trades">-</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel soft bento-card bento-admin-health">
+            <h2 class="section-title">System Health (Admin)</h2>
+            <div class="muted health-legend" id="health-legend-admin">Threshold legend loading...</div>
+            <div class="grid">
+                <div class="stat">
+                    <h3>CPU</h3>
+                    <div class="val" id="admin-health-cpu">-</div>
+                </div>
+                <div class="stat">
+                    <h3>RAM</h3>
+                    <div class="val" id="admin-health-mem">-</div>
+                </div>
+                <div class="stat">
+                    <h3>DB Locks/min</h3>
+                    <div class="val" id="admin-health-dblocks">-</div>
+                </div>
+                <div class="stat">
+                    <h3>DB Contention/min</h3>
+                    <div class="val" id="admin-health-db-contention">-</div>
+                </div>
+                <div class="stat">
+                    <h3>Skill Profile</h3>
+                    <div class="val" id="admin-health-skill-profile">-</div>
+                </div>
+                <div class="stat">
+                    <h3>Skill Hit Rate</h3>
+                    <div class="val" id="admin-health-skill-hitrate">-</div>
+                </div>
+                <div class="stat">
+                    <h3>Policy Block</h3>
+                    <div class="val" id="admin-health-skill-blockrate">-</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel bento-card bento-admin-decision">
+            <h2 class="section-title">Decision Log (Admin)</h2>
+            <div class="muted" id="admin-decision-note">Audit keputusan trading lintas user.</div>
+            <div class="table-wrap table-wrap-top">
+                <table id="admin-decision-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Symbol</th>
+                            <th>Direction</th>
+                            <th>Status</th>
+                            <th>Reason</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="panel soft bento-card bento-admin-market">
+            <h2 class="section-title">Realtime Market Pulse (Admin)</h2>
+            <div class="market-grid">
+                <article class="market-card">
+                    <div class="market-head">
+                        <h3>Crypto</h3>
+                        <span class="market-updated" id="admin-crypto-updated">-</span>
+                    </div>
+                    <div class="market-controls">
+                        <select id="admin-crypto-symbol-select" title="Pilih crypto symbol"></select>
+                        <select id="admin-crypto-timeframe-select" title="Pilih timeframe">
+                            <option value="15m">15m</option>
+                            <option value="1h" selected>1h</option>
+                            <option value="4h">4h</option>
+                            <option value="1d">1d</option>
+                            <option value="all">all</option>
+                        </select>
+                    </div>
+                    <div class="market-meta">
+                        <strong id="admin-crypto-symbol">-</strong>
+                        <span id="admin-crypto-price">-</span>
+                        <span id="admin-crypto-change">-</span>
+                    </div>
+                    <canvas id="admin-crypto-canvas"></canvas>
+                </article>
+                <article class="market-card">
+                    <div class="market-head">
+                        <h3>Saham</h3>
+                        <span class="market-updated" id="admin-stock-updated">-</span>
+                    </div>
+                    <div class="market-controls">
+                        <select id="admin-stock-symbol-select" title="Pilih saham symbol"></select>
+                        <select id="admin-stock-timeframe-select" title="Pilih timeframe">
+                            <option value="15m">15m</option>
+                            <option value="1h" selected>1h</option>
+                            <option value="4h">4h</option>
+                            <option value="1d">1d</option>
+                            <option value="all">all</option>
+                        </select>
+                    </div>
+                    <div class="market-meta">
+                        <strong id="admin-stock-symbol">-</strong>
+                        <span id="admin-stock-price">-</span>
+                        <span id="admin-stock-change">-</span>
+                    </div>
+                    <canvas id="admin-stock-canvas"></canvas>
+                </article>
+            </div>
+        </section>
+
+        <section class="panel bento-card bento-admin-alerts">
+            <h2 class="section-title">Alert Rule Builder</h2>
+            <div class="muted" id="alert-note">Buat rule alert harga realtime (cross above / cross below) untuk crypto dan saham.</div>
+            <div class="admin-alert-controls">
+                <input id="alert-name" placeholder="Rule name">
+                <select id="alert-kind">
+                    <option value="crypto">crypto</option>
+                    <option value="stock">stock</option>
+                </select>
+                <input id="alert-symbol" list="alert-symbol-options" placeholder="Symbol (e.g. BTC/USDT)">
+                <datalist id="alert-symbol-options"></datalist>
+                <select id="alert-condition">
+                    <option value="cross_above">cross_above</option>
+                    <option value="cross_below">cross_below</option>
+                </select>
+                <input id="alert-target-price" type="number" step="any" min="0" placeholder="Target price">
+                <input id="alert-cooldown-sec" type="number" min="30" step="1" value="300" placeholder="Cooldown sec">
+                <select id="alert-channel">
+                    <option value="portal">portal</option>
+                    <option value="telegram">telegram</option>
+                    <option value="both">both</option>
+                </select>
+                <select id="alert-scope">
+                    <option value="global">global</option>
+                    <option value="user">user</option>
+                </select>
+                <button class="btn primary" id="alert-create-btn" type="button">Create Rule</button>
+                <button class="btn" id="alert-refresh-btn" type="button">Refresh</button>
+                <button class="btn" id="alert-evaluate-btn" type="button">Evaluate Now</button>
+                <span class="muted" id="alert-status"></span>
+            </div>
+            <div class="table-wrap table-wrap-top">
+                <table id="alert-rules-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Scope</th>
+                            <th>Kind</th>
+                            <th>Symbol</th>
+                            <th>Condition</th>
+                            <th>Target</th>
+                            <th>Cooldown</th>
+                            <th>Channel</th>
+                            <th>Active</th>
+                            <th>Last Trigger</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="table-wrap table-wrap-top">
+                <table id="alert-events-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Rule ID</th>
+                            <th>User</th>
+                            <th>Symbol</th>
+                            <th>Condition</th>
+                            <th>Target</th>
+                            <th>Trigger</th>
+                            <th>Channel</th>
+                            <th>Status</th>
+                            <th>Message</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="panel soft bento-card bento-admin-activity">
+            <h2 class="section-title">User Activity Monitor</h2>
+            <div class="muted" id="admin-activity-note">Aktivitas terbaru user pada portal/admin API.</div>
+            <div class="admin-activity-controls">
+                <input id="activity-filter-username" placeholder="Filter username">
+                <input id="activity-filter-action" placeholder="Filter activity/action">
+                <select id="activity-filter-status">
+                    <option value="">All status</option>
+                    <option value="2xx">2xx success</option>
+                    <option value="3xx">3xx redirect</option>
+                    <option value="4xx">4xx client error</option>
+                    <option value="5xx">5xx server error</option>
+                </select>
+                <input id="activity-filter-from" type="datetime-local" title="From (local time)">
+                <input id="activity-filter-to" type="datetime-local" title="To (local time)">
+                <button class="btn" id="activity-apply-btn" type="button">Apply</button>
+                <button class="btn" id="activity-reset-btn" type="button">Reset</button>
+                <button class="btn primary" id="activity-export-btn" type="button">Export CSV</button>
+            </div>
+            <div class="activity-range-presets">
+                <button class="btn" id="activity-preset-1h" type="button">Last 1h</button>
+                <button class="btn" id="activity-preset-today" type="button">Today</button>
+                <button class="btn" id="activity-preset-7d" type="button">Last 7d</button>
+                <button class="btn" id="activity-preset-week" type="button">This Week</button>
+                <button class="btn" id="activity-preset-month" type="button">This Month</button>
+                <span class="muted">Time filter uses your local timezone, sent as UTC.</span>
+            </div>
+            <div class="activity-live-controls">
+                <button class="btn danger" id="activity-live-toggle-btn" type="button">Pause Auto Refresh</button>
+                <select id="activity-live-interval" title="Auto refresh interval">
+                    <option value="5000">5s</option>
+                    <option value="10000">10s</option>
+                    <option value="15000" selected>15s</option>
+                    <option value="30000">30s</option>
+                    <option value="60000">60s</option>
+                </select>
+                <span class="muted" id="activity-live-state">Auto refresh ON (15s)</span>
+            </div>
+            <div class="activity-filter-presets">
+                <input id="activity-preset-name" placeholder="Preset name">
+                <button class="btn" id="activity-preset-save-btn" type="button">Save Preset</button>
+                <select id="activity-preset-select">
+                    <option value="">Saved preset...</option>
+                </select>
+                <button class="btn" id="activity-preset-load-btn" type="button">Load</button>
+                <button class="btn" id="activity-preset-delete-btn" type="button">Delete</button>
+            </div>
+            <div class="activity-summary-grid">
+                <div class="activity-summary-pill">
+                    <span class="label">Total Rows</span>
+                    <strong class="value" id="activity-stat-total">-</strong>
+                </div>
+                <div class="activity-summary-pill">
+                    <span class="label">2xx Success</span>
+                    <strong class="value" id="activity-stat-2xx">-</strong>
+                </div>
+                <div class="activity-summary-pill">
+                    <span class="label">4xx Warning</span>
+                    <strong class="value" id="activity-stat-4xx">-</strong>
+                </div>
+                <div class="activity-summary-pill">
+                    <span class="label">5xx Critical</span>
+                    <strong class="value" id="activity-stat-5xx">-</strong>
+                </div>
+                <div class="activity-summary-pill">
+                    <span class="label">Sensitive</span>
+                    <strong class="value" id="activity-stat-sensitive">-</strong>
+                </div>
+            </div>
+            <div class="activity-top-wrap">
+                <section class="activity-top-card">
+                    <h3 class="section-title">Top User</h3>
+                    <ul class="activity-top-list" id="activity-top-users">
+                        <li class="muted">Belum ada data.</li>
+                    </ul>
+                </section>
+                <section class="activity-top-card">
+                    <h3 class="section-title">Top Activity</h3>
+                    <ul class="activity-top-list" id="activity-top-actions">
+                        <li class="muted">Belum ada data.</li>
+                    </ul>
+                </section>
+                <section class="activity-top-card activity-trend-card">
+                    <h3 class="section-title">Activity Trend</h3>
+                    <div class="activity-trend-bars" id="activity-trend-bars"></div>
+                    <div class="activity-trend-axis">
+                        <span class="muted" id="activity-trend-axis-start">-</span>
+                        <span class="muted" id="activity-trend-axis-end">-</span>
+                    </div>
+                    <div class="muted" id="activity-trend-meta">Trend belum tersedia.</div>
+                </section>
+            </div>
+            <section class="activity-anomaly-card">
+                <div class="activity-anomaly-head">
+                    <h3 class="section-title">Anomaly Detector</h3>
+                    <div class="activity-chain-inline">
+                        <button class="btn" id="activity-chain-verify-btn" type="button">Verify Audit Chain</button>
+                        <span class="muted" id="activity-chain-status">Chain: unknown</span>
+                    </div>
+                </div>
+                <div class="muted" id="activity-anomaly-window">Window: -</div>
+                <ul class="activity-anomaly-list" id="activity-anomaly-list">
+                    <li class="muted">Belum ada anomali.</li>
+                </ul>
+            </section>
+            <div class="table-wrap table-wrap-top">
+                <table id="admin-activity-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Username</th>
+                            <th>Activity</th>
+                            <th>Endpoint</th>
+                            <th>Status</th>
+                            <th>Detail</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="activity-pager">
+                <button class="btn" id="activity-prev-btn" type="button">Prev</button>
+                <span class="muted" id="activity-page-info">Page 1</span>
+                <button class="btn" id="activity-next-btn" type="button">Next</button>
+            </div>
+            <span class="muted" id="activity-status"></span>
+        </section>
+
+        <section class="panel soft bento-card bento-admin-sessions">
+            <h2 class="section-title">Session & Device Monitor</h2>
+            <div class="muted">Pantau login aktif (username, IP, user-agent, last seen) dan force logout user.</div>
+            <div class="session-controls">
+                <input id="session-filter-username" placeholder="Filter username session">
+                <button class="btn" id="session-refresh-btn" type="button">Refresh Session</button>
+            </div>
+            <div class="table-wrap table-wrap-top">
+                <table id="admin-session-table">
+                    <thead>
+                        <tr>
+                            <th>Last Seen</th>
+                            <th>Username</th>
+                            <th>IP</th>
+                            <th>User Agent</th>
+                            <th>Issued At</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <span class="muted" id="session-status"></span>
+        </section>
+
+        <section class="panel soft bento-card bento-admin-console" id="admin-root">
+            <h2 class="section-title">Admin Console</h2>
+            <h3 class="section-title admin-create-title">Create User</h3>
+            <div class="admin-tools">
+                <input id="new-email" placeholder="email">
+                <input id="new-name" placeholder="name">
+                <input id="new-password" type="password" placeholder="password">
+                <select id="new-role">
+                    <option value="user">user</option>
+                    <option value="admin">admin</option>
+                    <option value="superuser">superuser</option>
+                </select>
+                <button class="btn primary" id="create-user-btn" type="button">Create</button>
+                <span id="admin-status" class="muted"></span>
+            </div>
+
+            <div class="table-wrap table-wrap-admin">
+                <table id="users-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Email</th>
+                            <th>Name</th>
+                            <th>Role</th>
+                            <th>Password Reset</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</main>
+
+<div id="activity-detail-modal" class="activity-detail-modal" hidden>
+    <div class="activity-detail-card" role="dialog" aria-modal="true" aria-labelledby="activity-detail-title">
+        <div class="activity-detail-head">
+            <h3 id="activity-detail-title" class="section-title">Activity Detail</h3>
+            <button class="btn" id="activity-detail-close-btn" type="button">Close</button>
+        </div>
+        <div class="muted" id="activity-detail-summary">Klik row aktivitas untuk lihat detail.</div>
+        <pre id="activity-detail-json" class="activity-detail-json">{}</pre>
+        <div class="activity-detail-actions">
+            <button class="btn primary" id="activity-detail-copy-btn" type="button">Copy JSON</button>
+        </div>
+    </div>
+</div>
+<div id="toast-root" class="toast-root" aria-live="polite" aria-atomic="true"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+    let token = null;
+    try {
+        token = sessionStorage.getItem('elara_token_mem') || null;
+    } catch (_) {
+        token = null;
+    }
+    const csrfToken = (document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '').trim();
+    const initialViewHint = String({{ default_view | tojson }} || 'auto').toLowerCase();
+    const THEME_KEY = 'elara_portal_theme';
+    const THEME_KYOTO = 'kyoto';
+    const THEME_TOKYO_NIGHT = 'tokyo-night';
+    const ACTIVITY_PAGE_SIZE = 25;
+    const ACTIVITY_PRESETS_KEY = 'elara_activity_filter_presets';
+    const ACTIVITY_AUTO_REFRESH_KEY = 'elara_activity_auto_refresh_enabled';
+    const ACTIVITY_AUTO_REFRESH_INTERVAL_KEY = 'elara_activity_auto_refresh_interval_ms';
+    const ACTIVITY_AUTO_REFRESH_INTERVALS = [5000, 10000, 15000, 30000, 60000];
+    const MARKET_REFRESH_MS = 7000;
+    const MARKET_TIMEFRAMES = ['15m', '1h', '4h', '1d', 'all'];
+    const HEALTH_THRESHOLDS = {
+        dbRateWarn: 1.0,
+        dbRateBad: 3.0,
+        dbContentionWarn: 5.0,
+        dbContentionBad: 20.0,
+        cpuWarn: 85.0,
+        cpuBad: 95.0,
+        memWarn: 85.0,
+        memBad: 95.0,
+    };
+
+    let currentProfile = null;
+    let currentWorkspace = 'user';
+    let adminActivitySocket = null;
+    let activityRefreshTimer = null;
+    let dashboardRefreshTimer = null;
+    let activityAutoRefreshEnabled = true;
+    let activityState = {
+        limit: ACTIVITY_PAGE_SIZE,
+        offset: 0,
+        total: 0,
+        has_more: false,
+        username: '',
+        action: '',
+        status_group: '',
+        date_from: '',
+        date_to: '',
+    };
+    let sessionState = {
+        limit: 100,
+        offset: 0,
+        username: '',
+    };
+    let alertState = {
+        rules: [],
+        events: [],
+    };
+    let marketSelection = {
+        stock: { symbol: '', timeframe: '1h' },
+        crypto: { symbol: '', timeframe: '1h' },
+    };
+    let marketRefreshTimer = null;
+    let marketSocketConnected = false;
+    let marketSocketPingTimer = null;
+    let marketSocketPingSeq = 0;
+    let marketSocketPingPending = new Map();
+    let marketSocketLatencyMs = null;
+    let marketControlsBound = false;
+    let marketStreamStatusMode = 'boot';
+    let alertRefreshTimer = null;
+    let lastMarketPayload = null;
+    let activityDetailRaw = '';
+
+    function normalizeTheme(theme) {
+        return String(theme || '').toLowerCase() === THEME_TOKYO_NIGHT ? THEME_TOKYO_NIGHT : THEME_KYOTO;
+    }
+
+    function readStoredTheme() {
+        const raw = String(localStorage.getItem(THEME_KEY) || '').trim().toLowerCase();
+        if (raw === THEME_KYOTO || raw === THEME_TOKYO_NIGHT) return raw;
+        return '';
+    }
+
+    function detectSystemTheme() {
+        try {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                return THEME_TOKYO_NIGHT;
+            }
+        } catch (_) {}
+        return THEME_KYOTO;
+    }
+
+    function applyTheme(theme, persist = true) {
+        const nextTheme = normalizeTheme(theme);
+        document.body.setAttribute('data-theme', nextTheme);
+        const btn = document.getElementById('theme-toggle-btn');
+        if (btn) {
+            btn.innerText = nextTheme === THEME_TOKYO_NIGHT
+                ? 'Switch to Kyoto'
+                : 'Switch to Tokyo Night';
+        }
+        if (persist) {
+            localStorage.setItem(THEME_KEY, nextTheme);
+        }
+        if (lastMarketPayload) {
+            try { renderRealtimeMarket(lastMarketPayload); } catch (_) {}
+        }
+    }
+
+    function toggleTheme() {
+        const current = normalizeTheme(document.body.getAttribute('data-theme'));
+        applyTheme(current === THEME_TOKYO_NIGHT ? THEME_KYOTO : THEME_TOKYO_NIGHT);
+    }
+
+    function syncThemeWithSystemWhenUnset() {
+        try {
+            if (!window.matchMedia) return;
+            const media = window.matchMedia('(prefers-color-scheme: dark)');
+            const onChange = (event) => {
+                if (readStoredTheme()) return;
+                applyTheme(event.matches ? THEME_TOKYO_NIGHT : THEME_KYOTO, false);
+            };
+            if (typeof media.addEventListener === 'function') {
+                media.addEventListener('change', onChange);
+            } else if (typeof media.addListener === 'function') {
+                media.addListener(onChange);
+            }
+        } catch (_) {}
+    }
+
+    function initTheme() {
+        const saved = readStoredTheme();
+        if (saved) {
+            applyTheme(saved, false);
+            return;
+        }
+        applyTheme(detectSystemTheme(), false);
+        syncThemeWithSystemWhenUnset();
+    }
+
+    function showLegacyBanner() {
+        const banner = document.getElementById('legacy-banner');
+        if (!banner) return;
+        const params = new URLSearchParams(window.location.search);
+        const legacy = String(params.get('legacy') || params.get('from') || '').trim();
+        if (!legacy) return;
+        const clean = legacy.replace(/[^a-z0-9_-]/gi, '');
+        const label = clean ? ` (${clean})` : '';
+        banner.textContent = `Legacy UI${label} sudah deprecated. Portal ini jadi dashboard utama.`;
+        banner.hidden = false;
+    }
+
+    function authHeaders(extra = {}) {
+        return {
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+            ...(csrfToken ? { 'X-CSRFToken': csrfToken, 'X-CSRF-Token': csrfToken } : {}),
+            ...extra,
+        };
+    }
+
+    function toNum(v, d = 0) {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : d;
+    }
+
+    function applyMetricSeverity(el, value, warnThreshold, badThreshold) {
+        if (!el) return;
+        el.classList.remove('metric-ok', 'metric-warn', 'metric-bad');
+        if (!Number.isFinite(value)) return;
+        if (value >= badThreshold) {
+            el.classList.add('metric-bad');
+            return;
+        }
+        if (value >= warnThreshold) {
+            el.classList.add('metric-warn');
+            return;
+        }
+        el.classList.add('metric-ok');
+    }
+
+    function setMetricTooltip(el, label, value, warnThreshold, badThreshold, unitSuffix = '', digits = 2) {
+        if (!el) return;
+        const hasValue = Number.isFinite(value);
+        const safeDigits = Math.max(0, Number(digits) || 0);
+        const unit = String(unitSuffix || '');
+        const valueText = hasValue ? `${value.toFixed(safeDigits)}${unit}` : 'n/a';
+        const warnText = `${Number(warnThreshold).toFixed(safeDigits)}${unit}`;
+        const badText = `${Number(badThreshold).toFixed(safeDigits)}${unit}`;
+        let status = 'N/A';
+        if (hasValue) {
+            status = value >= badThreshold ? 'BAD' : (value >= warnThreshold ? 'WARN' : 'OK');
+        }
+        const tooltip = `${label}: ${valueText} | Status: ${status} | Warn >= ${warnText} | Bad >= ${badText}`;
+        el.title = tooltip;
+        el.setAttribute('aria-label', tooltip);
+    }
+
+    function getHealthLegendText() {
+        return `Warn: DB>=${HEALTH_THRESHOLDS.dbRateWarn}/min, CTN>=${HEALTH_THRESHOLDS.dbContentionWarn}/min, CPU/RAM>=${HEALTH_THRESHOLDS.cpuWarn}% | Bad: DB>=${HEALTH_THRESHOLDS.dbRateBad}/min, CTN>=${HEALTH_THRESHOLDS.dbContentionBad}/min, CPU/RAM>=${HEALTH_THRESHOLDS.cpuBad}%`;
+    }
+
+    function renderHealthLegends() {
+        const text = getHealthLegendText();
+        ['health-legend-user', 'health-legend-admin'].forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) el.innerText = text;
+        });
+    }
+
+    function fmtMarketPrice(val) {
+        const n = Number(val);
+        if (!Number.isFinite(n)) return '-';
+        if (Math.abs(n) >= 1000) return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        if (Math.abs(n) >= 1) return n.toFixed(4);
+        return n.toFixed(8);
+    }
+
+    function fmtPct(val) {
+        const n = Number(val);
+        if (!Number.isFinite(n)) return '-';
+        const sign = n > 0 ? '+' : '';
+        return `${sign}${n.toFixed(2)}%`;
+    }
+
+    function fmtUpdated(ts) {
+        const n = Number(ts);
+        if (!Number.isFinite(n) || n <= 0) return '-';
+        const d = new Date(n * 1000);
+        if (Number.isNaN(d.getTime())) return '-';
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    function nowMonotonicMs() {
+        try {
+            if (window.performance && typeof window.performance.now === 'function') {
+                return Number(window.performance.now());
+            }
+        } catch (_) {}
+        return Date.now();
+    }
+
+    function pushToast(message, kind = 'info', ttlMs = 3600) {
+        const root = document.getElementById('toast-root');
+        const text = String(message || '').trim();
+        if (!root || !text) return;
+        const toneRaw = String(kind || '').trim().toLowerCase();
+        const tone = ['ok', 'warn', 'err', 'info'].includes(toneRaw) ? toneRaw : 'info';
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${tone}`;
+        toast.setAttribute('role', 'status');
+        toast.innerText = text;
+        root.appendChild(toast);
+        requestAnimationFrame(() => {
+            toast.classList.add('show');
+        });
+        const ttl = Math.max(1500, Math.min(Number(ttlMs) || 3600, 12000));
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => {
+                if (toast.parentNode === root) {
+                    root.removeChild(toast);
+                }
+            }, 240);
+        }, ttl);
+    }
+
+    function clearMarketSocketPingState() {
+        marketSocketPingPending.clear();
+        marketSocketLatencyMs = null;
+    }
+
+    function stopMarketSocketPingLoop() {
+        if (marketSocketPingTimer) {
+            clearInterval(marketSocketPingTimer);
+            marketSocketPingTimer = null;
+        }
+        clearMarketSocketPingState();
+    }
+
+    function sendMarketSocketPing() {
+        if (!adminActivitySocket || !marketSocketConnected) return;
+        marketSocketPingSeq += 1;
+        const seq = marketSocketPingSeq;
+        marketSocketPingPending.set(seq, nowMonotonicMs());
+        if (marketSocketPingPending.size > 40) {
+            const stale = Array.from(marketSocketPingPending.keys()).slice(0, marketSocketPingPending.size - 20);
+            stale.forEach((key) => marketSocketPingPending.delete(key));
+        }
+        try {
+            adminActivitySocket.emit('market_ping', { seq, client_ts: Date.now() });
+        } catch (_) {
+            marketSocketPingPending.delete(seq);
+        }
+    }
+
+    function startMarketSocketPingLoop() {
+        stopMarketSocketPingLoop();
+        sendMarketSocketPing();
+        marketSocketPingTimer = setInterval(() => {
+            sendMarketSocketPing();
+        }, 10000);
+    }
+
+    function handleMarketSocketPong(payload) {
+        const data = (payload && typeof payload === 'object') ? payload : {};
+        const seq = Number(data.seq);
+        let measured = Number.NaN;
+        if (Number.isFinite(seq) && marketSocketPingPending.has(seq)) {
+            const sentAt = Number(marketSocketPingPending.get(seq));
+            marketSocketPingPending.delete(seq);
+            if (Number.isFinite(sentAt)) {
+                measured = nowMonotonicMs() - sentAt;
+            }
+        }
+        const fallback = Number(data.rtt_ms);
+        const rtt = Number.isFinite(measured) ? measured : fallback;
+        if (!Number.isFinite(rtt) || rtt < 0) return;
+        marketSocketLatencyMs = Math.max(0, Math.min(9999, rtt));
+        if (marketStreamStatusMode === 'live') {
+            setMarketStreamStatus('live');
+        }
+    }
+
+    function maybeNotifyMarketStreamModeChange(prevMode, nextMode, detail = '') {
+        if (prevMode === nextMode) return;
+        if (nextMode === 'boot' || nextMode === 'connecting') return;
+        if (prevMode === 'boot' && nextMode === 'live') return;
+        const detailText = String(detail || '').trim();
+        let tone = 'info';
+        let message = '';
+        if (nextMode === 'live') {
+            tone = 'ok';
+            const latencyText = Number.isFinite(marketSocketLatencyMs)
+                ? ` RTT ~${Math.round(marketSocketLatencyMs)}ms.`
+                : '';
+            message = `Market stream live via websocket.${latencyText}`;
+        } else if (nextMode === 'polling') {
+            tone = 'warn';
+            message = 'Market stream fallback ke HTTP polling.';
+        } else if (nextMode === 'error') {
+            tone = 'err';
+            message = 'Market stream error. Menunggu reconnect.';
+        } else if (nextMode === 'offline') {
+            tone = 'warn';
+            message = 'Market stream offline.';
+        } else {
+            return;
+        }
+        if (detailText) {
+            message = `${message} ${detailText}.`;
+        }
+        pushToast(message, tone, 4200);
+    }
+
+    function setMarketStreamStatus(mode = 'boot', detail = '') {
+        const el = document.getElementById('market-stream-status');
+        if (!el) return;
+        const prev = marketStreamStatusMode;
+        const raw = String(mode || '').trim().toLowerCase();
+        const next = ['boot', 'connecting', 'live', 'polling', 'error', 'offline'].includes(raw) ? raw : 'boot';
+        const labels = {
+            boot: 'MARKET INIT',
+            connecting: 'WS CONNECTING',
+            live: 'WS LIVE',
+            polling: 'HTTP POLLING',
+            error: 'STREAM ERROR',
+            offline: 'STREAM OFFLINE',
+        };
+        marketStreamStatusMode = next;
+        const latencyText = (next === 'live' && Number.isFinite(marketSocketLatencyMs))
+            ? ` ${Math.round(marketSocketLatencyMs)}ms`
+            : '';
+        el.className = `badge market-stream-badge market-stream-${next}`;
+        el.innerText = `${labels[next] || labels.boot}${latencyText}`;
+        const detailText = String(detail || '').trim();
+        el.title = detailText
+            ? `${el.innerText} | ${detailText}`
+            : el.innerText;
+        maybeNotifyMarketStreamModeChange(prev, next, detailText);
+    }
+
+    function drawSparkline(canvasId, points, lineColor) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        const rect = canvas.getBoundingClientRect();
+        const cssW = Math.max(120, Math.round(rect.width || 0));
+        const cssH = Math.max(90, Math.round(rect.height || 0));
+        const dpr = Math.max(1, window.devicePixelRatio || 1);
+        const width = Math.max(1, Math.round(cssW * dpr));
+        const height = Math.max(1, Math.round(cssH * dpr));
+        if (canvas.width !== width || canvas.height !== height) {
+            canvas.width = width;
+            canvas.height = height;
+        }
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.clearRect(0, 0, width, height);
+
+        const list = Array.isArray(points) ? points : [];
+        const values = list
+            .map((p) => Number((p && p.price) || NaN))
+            .filter((v) => Number.isFinite(v));
+        if (!values.length) {
+            ctx.fillStyle = 'rgba(150, 165, 186, 0.7)';
+            ctx.font = `${12 * dpr}px \"JetBrains Mono\", monospace`;
+            ctx.fillText('No data', 8 * dpr, (height / 2));
+            return;
+        }
+
+        const minV = Math.min(...values);
+        const maxV = Math.max(...values);
+        const range = Math.max(1e-9, maxV - minV);
+        const padX = 10 * dpr;
+        const padY = 10 * dpr;
+        const chartW = Math.max(1, width - padX * 2);
+        const chartH = Math.max(1, height - padY * 2);
+
+        ctx.strokeStyle = 'rgba(106, 131, 164, 0.32)';
+        ctx.lineWidth = Math.max(1, dpr * 0.9);
+        ctx.beginPath();
+        ctx.moveTo(padX, height - padY);
+        ctx.lineTo(width - padX, height - padY);
+        ctx.stroke();
+
+        ctx.beginPath();
+        values.forEach((val, idx) => {
+            const x = padX + (idx / Math.max(1, values.length - 1)) * chartW;
+            const y = padY + (1 - ((val - minV) / range)) * chartH;
+            if (idx === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        });
+
+        const grad = ctx.createLinearGradient(0, padY, 0, height - padY);
+        grad.addColorStop(0, lineColor);
+        grad.addColorStop(1, 'rgba(0,0,0,0.03)');
+        ctx.strokeStyle = lineColor;
+        ctx.lineWidth = Math.max(1.6, dpr * 1.4);
+        ctx.stroke();
+
+        ctx.save();
+        ctx.beginPath();
+        values.forEach((val, idx) => {
+            const x = padX + (idx / Math.max(1, values.length - 1)) * chartW;
+            const y = padY + (1 - ((val - minV) / range)) * chartH;
+            if (idx === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        });
+        ctx.lineTo(width - padX, height - padY);
+        ctx.lineTo(padX, height - padY);
+        ctx.closePath();
+        ctx.globalAlpha = 0.22;
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.restore();
+    }
+
+    function getMarketSelectIds(kind) {
+        const safeKind = String(kind || '').trim().toLowerCase() === 'stock' ? 'stock' : 'crypto';
+        return [
+            `user-${safeKind}-symbol-select`,
+            `admin-${safeKind}-symbol-select`,
+        ];
+    }
+
+    function getMarketTimeframeSelectIds(kind) {
+        const safeKind = String(kind || '').trim().toLowerCase() === 'stock' ? 'stock' : 'crypto';
+        return [
+            `user-${safeKind}-timeframe-select`,
+            `admin-${safeKind}-timeframe-select`,
+        ];
+    }
+
+    function syncMarketTimeframeControls(kind, value) {
+        const normalized = MARKET_TIMEFRAMES.includes(String(value || '').trim().toLowerCase())
+            ? String(value || '').trim().toLowerCase()
+            : '1h';
+        getMarketTimeframeSelectIds(kind).forEach((id) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (el.value !== normalized) el.value = normalized;
+        });
+    }
+
+    function syncMarketSymbolControls(kind, value) {
+        const normalized = String(value || '').trim().toUpperCase();
+        getMarketSelectIds(kind).forEach((id) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (normalized && el.value !== normalized) {
+                el.value = normalized;
+            }
+        });
+    }
+
+    function fillMarketSymbolOptions(kind, payload) {
+        const safeKind = String(kind || '').trim().toLowerCase() === 'stock' ? 'stock' : 'crypto';
+        const selected = String((marketSelection[safeKind] && marketSelection[safeKind].symbol) || '').trim().toUpperCase();
+        const data = payload || {};
+        const available = Array.isArray(data.available_symbols) ? data.available_symbols : [];
+        const fallback = String(data.symbol || '').trim().toUpperCase();
+        const symbols = [];
+        available.forEach((row) => {
+            const sym = String((row && row.symbol) || '').trim().toUpperCase();
+            if (!sym) return;
+            if (!symbols.includes(sym)) symbols.push(sym);
+        });
+        if (fallback && !symbols.includes(fallback)) symbols.unshift(fallback);
+
+        getMarketSelectIds(safeKind).forEach((id) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const oldVal = String(el.value || '').trim().toUpperCase();
+            el.innerHTML = '';
+            if (!symbols.length) {
+                const op = document.createElement('option');
+                op.value = '';
+                op.textContent = '-';
+                el.appendChild(op);
+                el.disabled = true;
+                return;
+            }
+            symbols.forEach((sym) => {
+                const op = document.createElement('option');
+                op.value = sym;
+                op.textContent = sym;
+                el.appendChild(op);
+            });
+            el.disabled = false;
+            const candidate = selected || oldVal || fallback || symbols[0];
+            if (symbols.includes(candidate)) {
+                el.value = candidate;
+            } else {
+                el.value = symbols[0];
+            }
+        });
+        const firstSel = document.getElementById(getMarketSelectIds(safeKind)[0]);
+        const finalVal = String((firstSel && firstSel.value) || fallback || '').trim().toUpperCase();
+        marketSelection[safeKind].symbol = finalVal;
+        syncMarketSymbolControls(safeKind, finalVal);
+    }
+
+    function normalizeAlertSymbol(kind, value) {
+        const marketKind = String(kind || '').trim().toLowerCase() === 'stock' ? 'stock' : 'crypto';
+        let raw = String(value || '').trim().toUpperCase();
+        if (!raw) return '';
+        if (marketKind === 'stock') return raw;
+        if (raw.includes('/')) return raw;
+        raw = raw.replace(/\s+/g, '').replace(/-/g, '').replace(/_/g, '');
+        const quoteCandidates = ['USDT', 'USDC', 'BUSD', 'USD', 'IDR', 'TRY', 'EUR', 'GBP', 'BTC', 'ETH', 'BNB'];
+        for (const quote of quoteCandidates) {
+            if (raw.length > quote.length && raw.endsWith(quote)) {
+                const base = raw.slice(0, raw.length - quote.length);
+                if (base.length >= 2) {
+                    return `${base}/${quote}`;
+                }
+            }
+        }
+        return raw;
+    }
+
+    function collectMarketSymbols(kind) {
+        const safeKind = String(kind || '').trim().toLowerCase() === 'stock' ? 'stock' : 'crypto';
+        const payload = (lastMarketPayload && lastMarketPayload[safeKind]) || {};
+        const available = Array.isArray(payload.available_symbols) ? payload.available_symbols : [];
+        const out = [];
+        available.forEach((row) => {
+            const sym = String((row && row.symbol) || '').trim().toUpperCase();
+            if (sym && !out.includes(sym)) out.push(sym);
+        });
+        const selected = String(payload.symbol || '').trim().toUpperCase();
+        if (selected && !out.includes(selected)) out.unshift(selected);
+        return out;
+    }
+
+    function refreshAlertSymbolSuggestions() {
+        const kindEl = document.getElementById('alert-kind');
+        const symbolInput = document.getElementById('alert-symbol');
+        const datalist = document.getElementById('alert-symbol-options');
+        if (!symbolInput || !datalist) return;
+        const kind = String((kindEl && kindEl.value) || 'crypto').trim().toLowerCase();
+        const symbols = collectMarketSymbols(kind);
+
+        datalist.innerHTML = '';
+        symbols.forEach((sym) => {
+            const op = document.createElement('option');
+            op.value = sym;
+            datalist.appendChild(op);
+        });
+
+        const currentRaw = String(symbolInput.value || '').trim();
+        const normalized = normalizeAlertSymbol(kind, currentRaw);
+        if (normalized && normalized !== currentRaw.toUpperCase()) {
+            symbolInput.value = normalized;
+            return;
+        }
+        if (!currentRaw && symbols.length) {
+            symbolInput.value = symbols[0];
+        }
+    }
+
+    function renderMarketCard(prefix, kind, payload) {
+        const safePrefix = String(prefix || '').trim();
+        const safeKind = String(kind || '').trim();
+        if (!safePrefix || !safeKind) return;
+        const data = payload || {};
+        const symbolEl = document.getElementById(`${safePrefix}-${safeKind}-symbol`);
+        const priceEl = document.getElementById(`${safePrefix}-${safeKind}-price`);
+        const changeEl = document.getElementById(`${safePrefix}-${safeKind}-change`);
+        const updatedEl = document.getElementById(`${safePrefix}-${safeKind}-updated`);
+        if (symbolEl) symbolEl.innerText = String(data.symbol || '-');
+        if (priceEl) priceEl.innerText = data.price == null ? '-' : fmtMarketPrice(data.price);
+        if (changeEl) {
+            changeEl.innerText = fmtPct(data.change_pct);
+            const n = Number(data.change_pct);
+            changeEl.className = Number.isFinite(n)
+                ? (n >= 0 ? 'market-change up' : 'market-change down')
+                : 'market-change';
+        }
+        if (updatedEl) updatedEl.innerText = fmtUpdated(data.updated_at);
+        const color = safeKind === 'crypto'
+            ? (document.body.getAttribute('data-theme') === 'tokyo-night' ? '#4fd1ff' : '#3f5c7a')
+            : (document.body.getAttribute('data-theme') === 'tokyo-night' ? '#f7c468' : '#c7563d');
+        drawSparkline(`${safePrefix}-${safeKind}-canvas`, data.points || [], color);
+    }
+
+    function renderRealtimeMarket(payload) {
+        lastMarketPayload = payload || {};
+        const stock = (payload && payload.stock) || {};
+        const crypto = (payload && payload.crypto) || {};
+        fillMarketSymbolOptions('stock', stock);
+        fillMarketSymbolOptions('crypto', crypto);
+        if (stock && stock.symbol) {
+            marketSelection.stock.symbol = String(stock.symbol || '').trim().toUpperCase();
+        }
+        if (crypto && crypto.symbol) {
+            marketSelection.crypto.symbol = String(crypto.symbol || '').trim().toUpperCase();
+        }
+        if (stock && stock.timeframe) {
+            marketSelection.stock.timeframe = String(stock.timeframe || '1h').trim().toLowerCase();
+        }
+        if (crypto && crypto.timeframe) {
+            marketSelection.crypto.timeframe = String(crypto.timeframe || '1h').trim().toLowerCase();
+        }
+        syncMarketTimeframeControls('stock', marketSelection.stock.timeframe);
+        syncMarketTimeframeControls('crypto', marketSelection.crypto.timeframe);
+        syncMarketSymbolControls('stock', marketSelection.stock.symbol);
+        syncMarketSymbolControls('crypto', marketSelection.crypto.symbol);
+        renderMarketCard('user', 'stock', stock);
+        renderMarketCard('user', 'crypto', crypto);
+        renderMarketCard('admin', 'stock', stock);
+        renderMarketCard('admin', 'crypto', crypto);
+        refreshAlertSymbolSuggestions();
+    }
+
+    function buildRealtimeMarketQuery(forceRefresh = false) {
+        const q = new URLSearchParams();
+        q.set('limit', '120');
+        if (forceRefresh) q.set('refresh', '1');
+        if (marketSelection.stock.symbol) q.set('stock_symbol', marketSelection.stock.symbol);
+        if (marketSelection.crypto.symbol) q.set('crypto_symbol', marketSelection.crypto.symbol);
+        q.set('stock_timeframe', marketSelection.stock.timeframe || '1h');
+        q.set('crypto_timeframe', marketSelection.crypto.timeframe || '1h');
+        return q.toString();
+    }
+
+    function buildMarketSocketSubscription(forceRefresh = false) {
+        return {
+            stock_symbol: marketSelection.stock.symbol || '',
+            crypto_symbol: marketSelection.crypto.symbol || '',
+            stock_timeframe: marketSelection.stock.timeframe || '1h',
+            crypto_timeframe: marketSelection.crypto.timeframe || '1h',
+            limit: 120,
+            refresh: forceRefresh ? 1 : 0,
+        };
+    }
+
+    function emitMarketSubscription(forceRefresh = false) {
+        if (!adminActivitySocket || !marketSocketConnected) return false;
+        try {
+            adminActivitySocket.emit('market_subscribe', buildMarketSocketSubscription(forceRefresh));
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    async function loadRealtimeMarket(forceRefresh = false) {
+        const out = await fetchJson(`/api/market/realtime?${buildRealtimeMarketQuery(forceRefresh)}`);
+        if (!out || !out.ok) return;
+        renderRealtimeMarket(out.data || {});
+        if (!marketSocketConnected) {
+            setMarketStreamStatus('polling');
+        }
+    }
+
+    async function handleMarketSymbolChange(kind, nextSymbol) {
+        const safeKind = String(kind || '').trim().toLowerCase() === 'stock' ? 'stock' : 'crypto';
+        marketSelection[safeKind].symbol = String(nextSymbol || '').trim().toUpperCase();
+        syncMarketSymbolControls(safeKind, marketSelection[safeKind].symbol);
+        const pushed = emitMarketSubscription(true);
+        if (!pushed) {
+            try { await loadRealtimeMarket(true); } catch (_) {}
+        }
+    }
+
+    async function handleMarketTimeframeChange(kind, nextTf) {
+        const safeKind = String(kind || '').trim().toLowerCase() === 'stock' ? 'stock' : 'crypto';
+        const normalized = MARKET_TIMEFRAMES.includes(String(nextTf || '').trim().toLowerCase())
+            ? String(nextTf || '').trim().toLowerCase()
+            : '1h';
+        marketSelection[safeKind].timeframe = normalized;
+        syncMarketTimeframeControls(safeKind, normalized);
+        const pushed = emitMarketSubscription(false);
+        if (!pushed) {
+            try { await loadRealtimeMarket(false); } catch (_) {}
+        }
+    }
+
+    function bindMarketControls() {
+        if (marketControlsBound) return;
+        marketControlsBound = true;
+        ['stock', 'crypto'].forEach((kind) => {
+            getMarketSelectIds(kind).forEach((id) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.addEventListener('change', () => {
+                    handleMarketSymbolChange(kind, el.value);
+                });
+            });
+            getMarketTimeframeSelectIds(kind).forEach((id) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.addEventListener('change', () => {
+                    handleMarketTimeframeChange(kind, el.value);
+                });
+            });
+        });
+    }
+
+    function isAdminRole() {
+        const role = String((currentProfile && currentProfile.role) || '').toLowerCase();
+        return role === 'admin' || role === 'superuser';
+    }
+
+    function normalizeActivityRefreshIntervalMs(value) {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return 15000;
+        if (ACTIVITY_AUTO_REFRESH_INTERVALS.includes(Math.trunc(n))) return Math.trunc(n);
+        return 15000;
+    }
+
+    function setActivityAutoRefreshState(enabled, message = '') {
+        activityAutoRefreshEnabled = Boolean(enabled);
+        try {
+            localStorage.setItem(ACTIVITY_AUTO_REFRESH_KEY, activityAutoRefreshEnabled ? '1' : '0');
+        } catch (_) {}
+        const btn = document.getElementById('activity-live-toggle-btn');
+        const statusEl = document.getElementById('activity-live-state');
+        const intervalEl = document.getElementById('activity-live-interval');
+        const intervalMs = normalizeActivityRefreshIntervalMs(intervalEl && intervalEl.value);
+        if (btn) {
+            btn.innerText = activityAutoRefreshEnabled ? 'Pause Auto Refresh' : 'Resume Auto Refresh';
+            btn.classList.toggle('danger', activityAutoRefreshEnabled);
+            btn.classList.toggle('primary', !activityAutoRefreshEnabled);
+        }
+        if (statusEl) {
+            statusEl.className = `muted ${activityAutoRefreshEnabled ? 'ok' : ''}`.trim();
+            statusEl.innerText = activityAutoRefreshEnabled
+                ? `Auto refresh ON (${Math.round(intervalMs / 1000)}s)`
+                : 'Auto refresh OFF (manual mode)';
+        }
+        if (message) {
+            setActivityStatus(message, activityAutoRefreshEnabled ? 'ok' : 'muted');
+        }
+    }
+
+    function readActivityAutoRefreshSettings() {
+        const intervalEl = document.getElementById('activity-live-interval');
+        try {
+            const rawInterval = String(localStorage.getItem(ACTIVITY_AUTO_REFRESH_INTERVAL_KEY) || '').trim();
+            const intervalMs = normalizeActivityRefreshIntervalMs(rawInterval);
+            if (intervalEl) intervalEl.value = String(intervalMs);
+        } catch (_) {
+            if (intervalEl) intervalEl.value = '15000';
+        }
+        try {
+            const rawEnabled = String(localStorage.getItem(ACTIVITY_AUTO_REFRESH_KEY) || '').trim().toLowerCase();
+            const enabled = rawEnabled === '' ? true : !['0', 'false', 'off', 'no'].includes(rawEnabled);
+            setActivityAutoRefreshState(enabled);
+        } catch (_) {
+            setActivityAutoRefreshState(true);
+        }
+    }
+
+    function getDashboardRefreshIntervalMs() {
+        const intervalEl = document.getElementById('activity-live-interval');
+        const intervalMs = normalizeActivityRefreshIntervalMs(intervalEl && intervalEl.value);
+        try {
+            localStorage.setItem(ACTIVITY_AUTO_REFRESH_INTERVAL_KEY, String(intervalMs));
+        } catch (_) {}
+        if (intervalEl) intervalEl.value = String(intervalMs);
+        return intervalMs;
+    }
+
+    function stopDashboardRefreshLoop() {
+        if (dashboardRefreshTimer) {
+            clearInterval(dashboardRefreshTimer);
+            dashboardRefreshTimer = null;
+        }
+    }
+
+    function startDashboardRefreshLoop() {
+        stopDashboardRefreshLoop();
+        const intervalMs = getDashboardRefreshIntervalMs();
+        dashboardRefreshTimer = setInterval(async () => {
+            await loadUserDash();
+            await loadDecisionLog();
+            await loadAdminDash();
+            if (activityAutoRefreshEnabled) {
+                await loadAdminActivity({ resetOffset: false });
+            }
+            await loadAdminSessions();
+            await loadAlertRules();
+            await loadAlertEvents();
+        }, intervalMs);
+    }
+
+    function scheduleActivityRefresh(delayMs = 700, force = false) {
+        if (!force && !activityAutoRefreshEnabled) return;
+        if (activityRefreshTimer) {
+            clearTimeout(activityRefreshTimer);
+        }
+        activityRefreshTimer = setTimeout(() => {
+            loadAdminActivity({ resetOffset: false });
+            activityRefreshTimer = null;
+        }, Math.max(150, Number(delayMs) || 700));
+    }
+
+    function connectAdminActivityStream() {
+        if (adminActivitySocket) return;
+        if (typeof window.io !== 'function') {
+            stopMarketSocketPingLoop();
+            setMarketStreamStatus('polling', 'socket.io missing');
+            if (isAdminRole()) {
+                setActivityStatus('Live stream unavailable (socket.io missing)', 'err');
+            }
+            return;
+        }
+        setMarketStreamStatus('connecting');
+        try {
+            const socket = window.io('/', {
+                transports: ['websocket', 'polling'],
+                auth: { token },
+            });
+            adminActivitySocket = socket;
+            socket.on('connect', () => {
+                marketSocketConnected = true;
+                startMarketSocketPingLoop();
+                setMarketStreamStatus('live');
+                emitMarketSubscription(true);
+                if (isAdminRole()) {
+                    setActivityStatus('Live stream connected', 'ok');
+                }
+            });
+            socket.on('disconnect', () => {
+                marketSocketConnected = false;
+                stopMarketSocketPingLoop();
+                setMarketStreamStatus('polling', 'socket disconnected');
+                if (isAdminRole()) {
+                    setActivityStatus('Live stream disconnected', 'err');
+                }
+            });
+            socket.on('connect_error', () => {
+                marketSocketConnected = false;
+                stopMarketSocketPingLoop();
+                setMarketStreamStatus('error', 'connect error');
+            });
+            socket.on('admin_activity_event', (_payload) => {
+                if (!isAdminRole()) return;
+                scheduleActivityRefresh(500);
+            });
+            socket.on('market_pong', (payload) => {
+                handleMarketSocketPong(payload);
+            });
+            socket.on('market_realtime_event', (payload) => {
+                if (!payload || typeof payload !== 'object') return;
+                const nextPayload = (payload.data && typeof payload.data === 'object')
+                    ? payload.data
+                    : payload;
+                setMarketStreamStatus('live');
+                try { renderRealtimeMarket(nextPayload); } catch (_) {}
+            });
+            socket.on('market_alert_event', (payload) => {
+                const data = (payload && typeof payload === 'object') ? payload : {};
+                const msg = String(data.message || '').trim();
+                if (msg) {
+                    pushToast(msg, 'warn', 6500);
+                }
+                if (isAdminRole()) {
+                    scheduleAlertRefresh(450);
+                }
+            });
+        } catch (_) {
+            marketSocketConnected = false;
+            stopMarketSocketPingLoop();
+            setMarketStreamStatus('error', 'socket init failed');
+            adminActivitySocket = null;
+            if (isAdminRole()) {
+                setActivityStatus('Live stream connection failed', 'err');
+            }
+        }
+    }
+
+    async function fetchJson(url, opts = {}) {
+        const res = await fetch(url, { ...opts, headers: authHeaders(opts.headers || {}) });
+        if (res.status === 401 || res.status === 422) {
+            token = null;
+            try { sessionStorage.removeItem('elara_token_mem'); } catch (_) {}
+            try { localStorage.removeItem('elara_token'); } catch (_) {}
+            window.location.href = '/login';
+            return null;
+        }
+        const data = await res.json().catch(() => ({}));
+        return { ok: res.ok, status: res.status, data };
+    }
+
+    function setWorkspaceView(view, persist = true) {
+        const adminAllowed = isAdminRole();
+        const nextView = (adminAllowed && view === 'admin') ? 'admin' : 'user';
+        currentWorkspace = nextView;
+
+        const userWorkspace = document.getElementById('user-workspace');
+        const adminWorkspace = document.getElementById('admin-workspace');
+        const userBtn = document.getElementById('view-user-btn');
+        const adminBtn = document.getElementById('view-admin-btn');
+        const status = document.getElementById('view-status');
+
+        userWorkspace.classList.toggle('active-workspace', nextView === 'user');
+        adminWorkspace.classList.toggle('active-workspace', nextView === 'admin' && adminAllowed);
+
+        if (userBtn) userBtn.classList.toggle('view-active', nextView === 'user');
+        if (adminBtn) {
+            adminBtn.classList.toggle('view-active', nextView === 'admin');
+            adminBtn.disabled = !adminAllowed;
+        }
+        if (status) {
+            status.innerText = adminAllowed
+                ? (nextView === 'admin' ? 'Admin workspace active' : 'User workspace active')
+                : 'User workspace active';
+        }
+
+        if (persist && adminAllowed) {
+            localStorage.setItem('elara_portal_workspace', nextView);
+        }
+    }
+
+    function configureWorkspaceByRole() {
+        const panel = document.getElementById('view-toggle-panel');
+        const adminAllowed = isAdminRole();
+        panel.hidden = !adminAllowed;
+
+        if (!adminAllowed) {
+            setWorkspaceView('user', false);
+            return;
+        }
+
+        let preferred = localStorage.getItem('elara_portal_workspace') || 'admin';
+        if (initialViewHint === 'admin' || initialViewHint === 'user') {
+            preferred = initialViewHint;
+        }
+        setWorkspaceView(preferred, false);
+    }
+
+    async function loadProfile() {
+        const out = await fetchJson('/api/me');
+        if (!out || !out.ok) return;
+        currentProfile = out.data || {};
+        const email = currentProfile.email || '-';
+        const name = currentProfile.name || '-';
+        const role = (currentProfile.role || 'user').toUpperCase();
+        document.getElementById('whoami').innerText = `${name} (${email})`;
+        document.getElementById('role-badge').innerText = role;
+        document.getElementById('admin-root').style.display = isAdminRole() ? 'block' : 'none';
+        configureWorkspaceByRole();
+    }
+
+    async function loadUserDash() {
+        const out = await fetchJson('/api/dashboard/user');
+        if (!out || !out.ok) return;
+        const tm = out.data.trading_metrics || {};
+        const h = out.data.health || {};
+        const sa = out.data.skill_analytics || {};
+        const cpuPct = h.cpu_pct == null ? Number.NaN : toNum(h.cpu_pct, Number.NaN);
+        const memPct = h.mem_pct == null ? Number.NaN : toNum(h.mem_pct, Number.NaN);
+        const dbRatePerMin = toNum(h.db_lock_rate_per_min, 0);
+        const dbContentionRatePerMin = toNum(h.db_write_lock_contention_rate_per_min, 0);
+        const cpuEl = document.getElementById('health-cpu');
+        const memEl = document.getElementById('health-mem');
+        const dbRateEl = document.getElementById('health-dblocks');
+        const dbContentionEl = document.getElementById('health-db-contention');
+        document.getElementById('stat-equity').innerText = `$${toNum(tm.equity, 0).toFixed(2)}`;
+        document.getElementById('stat-winrate').innerText = `${(toNum(tm.win_rate, 0) * 100).toFixed(2)}%`;
+        document.getElementById('stat-trades').innerText = `${Math.trunc(toNum(tm.trade_count, 0))}`;
+        if (cpuEl) cpuEl.innerText = Number.isFinite(cpuPct) ? `${cpuPct.toFixed(1)}%` : 'n/a';
+        if (memEl) memEl.innerText = Number.isFinite(memPct) ? `${memPct.toFixed(1)}%` : 'n/a';
+        applyMetricSeverity(cpuEl, cpuPct, HEALTH_THRESHOLDS.cpuWarn, HEALTH_THRESHOLDS.cpuBad);
+        applyMetricSeverity(memEl, memPct, HEALTH_THRESHOLDS.memWarn, HEALTH_THRESHOLDS.memBad);
+        setMetricTooltip(cpuEl, 'CPU', cpuPct, HEALTH_THRESHOLDS.cpuWarn, HEALTH_THRESHOLDS.cpuBad, '%', 1);
+        setMetricTooltip(memEl, 'RAM', memPct, HEALTH_THRESHOLDS.memWarn, HEALTH_THRESHOLDS.memBad, '%', 1);
+        if (dbRateEl) dbRateEl.innerText = `${dbRatePerMin.toFixed(2)}`;
+        if (dbContentionEl) dbContentionEl.innerText = `${dbContentionRatePerMin.toFixed(2)}`;
+        applyMetricSeverity(dbRateEl, dbRatePerMin, HEALTH_THRESHOLDS.dbRateWarn, HEALTH_THRESHOLDS.dbRateBad);
+        applyMetricSeverity(
+            dbContentionEl,
+            dbContentionRatePerMin,
+            HEALTH_THRESHOLDS.dbContentionWarn,
+            HEALTH_THRESHOLDS.dbContentionBad
+        );
+        setMetricTooltip(dbRateEl, 'DB Locks', dbRatePerMin, HEALTH_THRESHOLDS.dbRateWarn, HEALTH_THRESHOLDS.dbRateBad, '/min', 2);
+        setMetricTooltip(
+            dbContentionEl,
+            'DB Contention',
+            dbContentionRatePerMin,
+            HEALTH_THRESHOLDS.dbContentionWarn,
+            HEALTH_THRESHOLDS.dbContentionBad,
+            '/min',
+            2
+        );
+        document.getElementById('health-skill-profile').innerText = String(sa.profile || '-');
+        document.getElementById('health-skill-hitrate').innerText = `${toNum(sa.route_hit_rate_pct, 0).toFixed(2)}%`;
+        document.getElementById('health-skill-blockrate').innerText = `${toNum(sa.policy_block_rate_pct, 0).toFixed(2)}%`;
+        if (out.data && out.data.market_realtime && !lastMarketPayload) {
+            renderRealtimeMarket(out.data.market_realtime);
+        }
+    }
+
+    function rowCell(text, label) {
+        const td = document.createElement('td');
+        td.setAttribute('data-label', label);
+        td.innerText = text;
+        return td;
+    }
+
+    function renderDecisionTable(tableId, rows, emptyText) {
+        const tbody = document.querySelector(`#${tableId} tbody`);
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        if (!rows.length) {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.colSpan = 5;
+            td.className = 'muted';
+            td.innerText = emptyText;
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+            return;
+        }
+        rows.forEach((row) => {
+            const tr = document.createElement('tr');
+            tr.appendChild(rowCell(String(row.entry_time || '-'), 'Time'));
+            tr.appendChild(rowCell(String(row.symbol || '-'), 'Symbol'));
+            tr.appendChild(rowCell(String(row.direction || '-'), 'Direction'));
+            tr.appendChild(rowCell(String(row.status || '-'), 'Status'));
+            tr.appendChild(rowCell(String(row.entry_reason || '-'), 'Reason'));
+            tbody.appendChild(tr);
+        });
+    }
+
+    async function loadDecisionLog() {
+        const out = await fetchJson('/api/trading/decisions?limit=20');
+        if (!out || !out.ok) return;
+        const rows = out.data.items || [];
+        renderDecisionTable('decision-table', rows, 'Belum ada keputusan trading.');
+        renderDecisionTable('admin-decision-table', rows, 'Belum ada keputusan trading untuk audit admin.');
+    }
+
+    function formatTrendLabel(bucketIso, unit) {
+        const d = new Date(String(bucketIso || ''));
+        if (Number.isNaN(d.getTime())) return '-';
+        if (unit === 'day') {
+            return d.toLocaleDateString([], { day: '2-digit', month: 'short' });
+        }
+        return d.toLocaleString([], {
+            day: '2-digit',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    }
+
+    function renderActivityTrend(trendPayload) {
+        const barsEl = document.getElementById('activity-trend-bars');
+        const metaEl = document.getElementById('activity-trend-meta');
+        const axisStartEl = document.getElementById('activity-trend-axis-start');
+        const axisEndEl = document.getElementById('activity-trend-axis-end');
+        if (!barsEl || !metaEl || !axisStartEl || !axisEndEl) return;
+
+        barsEl.innerHTML = '';
+        const trend = trendPayload || {};
+        const unit = String(trend.unit || 'hour').toLowerCase() === 'day' ? 'day' : 'hour';
+        const rawPoints = Array.isArray(trend.points) ? trend.points : [];
+        if (!rawPoints.length) {
+            metaEl.innerText = 'Trend belum tersedia.';
+            axisStartEl.innerText = '-';
+            axisEndEl.innerText = '-';
+            return;
+        }
+
+        const maxBars = 60;
+        let points = rawPoints;
+        if (rawPoints.length > maxBars) {
+            const stride = Math.ceil(rawPoints.length / maxBars);
+            const compacted = [];
+            for (let i = 0; i < rawPoints.length; i += stride) {
+                const chunk = rawPoints.slice(i, i + stride);
+                const head = chunk[0] || {};
+                const total = chunk.reduce((acc, item) => acc + Math.max(0, Number((item && item.count) || 0)), 0);
+                compacted.push({ bucket: head.bucket, count: total });
+            }
+            points = compacted;
+        }
+
+        const maxCount = Math.max(1, ...points.map((p) => Math.max(0, Number((p && p.count) || 0))));
+        points.forEach((p) => {
+            const count = Math.max(0, Number((p && p.count) || 0));
+            const bar = document.createElement('div');
+            bar.className = 'activity-trend-bar';
+            const ratio = count / maxCount;
+            bar.style.height = `${Math.max(8, Math.round(ratio * 100))}%`;
+            const label = formatTrendLabel(p && p.bucket, unit);
+            bar.title = `${label} | ${count} events`;
+            barsEl.appendChild(bar);
+        });
+
+        const first = points[0] || {};
+        const last = points[points.length - 1] || {};
+        axisStartEl.innerText = formatTrendLabel(first.bucket, unit);
+        axisEndEl.innerText = formatTrendLabel(last.bucket, unit);
+
+        const partial = Boolean(trend.partial);
+        const sourceRows = Math.max(0, Number(trend.source_rows || 0));
+        metaEl.innerText = `${unit.toUpperCase()} buckets: ${points.length} | source rows: ${sourceRows}${partial ? ' (partial scan)' : ''}`;
+    }
+
+    function openActivityDetail(row) {
+        const modal = document.getElementById('activity-detail-modal');
+        const summaryEl = document.getElementById('activity-detail-summary');
+        const jsonEl = document.getElementById('activity-detail-json');
+        if (!modal || !summaryEl || !jsonEl) return;
+
+        const payload = {
+            id: row && row.id,
+            timestamp: row && row.timestamp,
+            username: row && row.username,
+            action: row && row.action,
+            method: row && row.method,
+            path: row && row.path,
+            status_code: row && row.status_code,
+            details: row && row.details,
+        };
+        activityDetailRaw = JSON.stringify(payload, null, 2);
+        jsonEl.innerText = activityDetailRaw;
+        summaryEl.innerText = [
+            String(payload.timestamp || '-'),
+            String(payload.username || '-'),
+            String(payload.action || '-'),
+            `${String(payload.method || '').toUpperCase()} ${String(payload.path || '')}`.trim(),
+            `status=${String(payload.status_code ?? '-')}`,
+        ].join(' | ');
+        modal.hidden = false;
+        document.body.classList.add('modal-open');
+    }
+
+    function closeActivityDetail() {
+        const modal = document.getElementById('activity-detail-modal');
+        if (!modal) return;
+        modal.hidden = true;
+        document.body.classList.remove('modal-open');
+    }
+
+    async function copyActivityDetailJson() {
+        const raw = String(activityDetailRaw || '').trim();
+        if (!raw) return;
+        try {
+            await navigator.clipboard.writeText(raw);
+            setActivityStatus('Activity JSON copied', 'ok');
+        } catch (_) {
+            setActivityStatus('Copy JSON failed', 'err');
+        }
+    }
+
+    function renderActivityTable(rows) {
+        const tbody = document.querySelector('#admin-activity-table tbody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        if (!rows.length) {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.colSpan = 6;
+            td.className = 'muted';
+            td.innerText = 'Belum ada aktivitas user tercatat.';
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+            return;
+        }
+        rows.forEach((row) => {
+            const tr = document.createElement('tr');
+            tr.classList.add('activity-row-clickable');
+            const actionText = String(row.action || '').toLowerCase();
+            const code = Number(row.status_code);
+            const statusFamily = Number.isFinite(code) ? Math.floor(code / 100) : 0;
+            const isSensitiveAction =
+                actionText.includes('panic') ||
+                actionText.includes('selfops') ||
+                actionText.includes('admin_create_user') ||
+                actionText.includes('admin_update_user') ||
+                actionText.includes('trading_command');
+            const isRejectedOrFailed =
+                actionText.includes('rejected') ||
+                actionText.includes('failed');
+
+            if (statusFamily >= 5 || isRejectedOrFailed) {
+                tr.classList.add('activity-row-critical');
+            } else if (statusFamily === 4) {
+                tr.classList.add('activity-row-warning');
+            } else if (isSensitiveAction) {
+                tr.classList.add('activity-row-sensitive');
+            } else if (statusFamily === 2) {
+                tr.classList.add('activity-row-ok');
+            }
+
+            const endpoint = [String(row.method || '').toUpperCase(), String(row.path || '')]
+                .map((part) => part.trim())
+                .filter((part) => part.length > 0)
+                .join(' ');
+            tr.appendChild(rowCell(String(row.timestamp || '-'), 'Time'));
+            tr.appendChild(rowCell(String(row.username || '-'), 'Username'));
+            const actionCell = rowCell(String(row.action || '-'), 'Activity');
+            if (isSensitiveAction) {
+                actionCell.classList.add('activity-tag-sensitive');
+            } else if (isRejectedOrFailed) {
+                actionCell.classList.add('activity-tag-critical');
+            }
+            tr.appendChild(actionCell);
+            tr.appendChild(rowCell(endpoint || '-', 'Endpoint'));
+            tr.appendChild(rowCell(String(row.status_code ?? '-'), 'Status'));
+            tr.appendChild(rowCell(String(row.details || '-'), 'Detail'));
+            tr.addEventListener('click', (event) => {
+                if (event.target && event.target.closest('button,a,input,select,textarea')) return;
+                openActivityDetail(row);
+            });
+            tbody.appendChild(tr);
+        });
+    }
+
+    function setActivityStatus(message, kind = 'muted') {
+        const el = document.getElementById('activity-status');
+        if (!el) return;
+        el.className = `muted ${kind}`.trim();
+        el.innerText = message || '';
+    }
+
+    function toDatetimeLocalInputValue(date) {
+        if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+        const pad = (n) => String(n).padStart(2, '0');
+        return [
+            date.getFullYear(),
+            '-',
+            pad(date.getMonth() + 1),
+            '-',
+            pad(date.getDate()),
+            'T',
+            pad(date.getHours()),
+            ':',
+            pad(date.getMinutes()),
+        ].join('');
+    }
+
+    function datetimeLocalToIsoUtc(value) {
+        const raw = String(value || '').trim();
+        if (!raw) return '';
+        const parsed = new Date(raw);
+        if (Number.isNaN(parsed.getTime())) return '';
+        return parsed.toISOString();
+    }
+
+    async function applyActivityRangePreset(preset) {
+        const now = new Date();
+        let from = null;
+        if (preset === '1h') {
+            from = new Date(now.getTime() - 60 * 60 * 1000);
+        } else if (preset === 'today') {
+            from = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+        } else if (preset === '7d') {
+            from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        } else if (preset === 'week') {
+            const day = now.getDay(); // 0=Sun ... 6=Sat
+            const daysSinceMonday = (day + 6) % 7;
+            from = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+            from.setDate(from.getDate() - daysSinceMonday);
+        } else if (preset === 'month') {
+            from = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+        }
+        if (!from) return;
+        const fromEl = document.getElementById('activity-filter-from');
+        const toEl = document.getElementById('activity-filter-to');
+        if (fromEl) fromEl.value = toDatetimeLocalInputValue(from);
+        if (toEl) toEl.value = toDatetimeLocalInputValue(now);
+        await loadAdminActivity({ resetOffset: true });
+    }
+
+    function syncActivityStateFromFilters(resetOffset = false) {
+        const usernameEl = document.getElementById('activity-filter-username');
+        const actionEl = document.getElementById('activity-filter-action');
+        const statusEl = document.getElementById('activity-filter-status');
+        const fromEl = document.getElementById('activity-filter-from');
+        const toEl = document.getElementById('activity-filter-to');
+        activityState.username = String((usernameEl && usernameEl.value) || '').trim();
+        activityState.action = String((actionEl && actionEl.value) || '').trim();
+        activityState.status_group = String((statusEl && statusEl.value) || '').trim().toLowerCase();
+        activityState.date_from = String((fromEl && fromEl.value) || '').trim();
+        activityState.date_to = String((toEl && toEl.value) || '').trim();
+        if (resetOffset) activityState.offset = 0;
+    }
+
+    function resetActivityFilters() {
+        const usernameEl = document.getElementById('activity-filter-username');
+        const actionEl = document.getElementById('activity-filter-action');
+        const statusEl = document.getElementById('activity-filter-status');
+        const fromEl = document.getElementById('activity-filter-from');
+        const toEl = document.getElementById('activity-filter-to');
+        if (usernameEl) usernameEl.value = '';
+        if (actionEl) actionEl.value = '';
+        if (statusEl) statusEl.value = '';
+        if (fromEl) fromEl.value = '';
+        if (toEl) toEl.value = '';
+        activityState.username = '';
+        activityState.action = '';
+        activityState.status_group = '';
+        activityState.date_from = '';
+        activityState.date_to = '';
+        activityState.offset = 0;
+    }
+
+    function buildActivityQuery(params) {
+        const q = new URLSearchParams();
+        q.set('limit', String(Math.max(1, params.limit || ACTIVITY_PAGE_SIZE)));
+        q.set('offset', String(Math.max(0, params.offset || 0)));
+        if (params.username) q.set('username', params.username);
+        if (params.action) q.set('action', params.action);
+        if (params.status_group) q.set('status_group', params.status_group);
+        const fromUtc = datetimeLocalToIsoUtc(params.date_from);
+        const toUtc = datetimeLocalToIsoUtc(params.date_to);
+        if (fromUtc) q.set('date_from', fromUtc);
+        if (toUtc) q.set('date_to', toUtc);
+        return q.toString();
+    }
+
+    function getActivityFilterSnapshot() {
+        return {
+            username: String(activityState.username || '').trim(),
+            action: String(activityState.action || '').trim(),
+            status_group: String(activityState.status_group || '').trim(),
+            date_from: String(activityState.date_from || '').trim(),
+            date_to: String(activityState.date_to || '').trim(),
+        };
+    }
+
+    function readSavedActivityPresets() {
+        try {
+            const raw = localStorage.getItem(ACTIVITY_PRESETS_KEY);
+            const parsed = JSON.parse(raw || '[]');
+            if (!Array.isArray(parsed)) return [];
+            return parsed
+                .filter((item) => item && typeof item === 'object')
+                .map((item) => ({
+                    name: String(item.name || '').trim(),
+                    filters: item.filters || {},
+                }))
+                .filter((item) => item.name.length > 0);
+        } catch (_) {
+            return [];
+        }
+    }
+
+    function writeSavedActivityPresets(items) {
+        try {
+            localStorage.setItem(ACTIVITY_PRESETS_KEY, JSON.stringify(Array.isArray(items) ? items : []));
+        } catch (_) {}
+    }
+
+    function refreshActivityPresetOptions() {
+        const select = document.getElementById('activity-preset-select');
+        if (!select) return;
+        const items = readSavedActivityPresets();
+        const current = String(select.value || '');
+        select.innerHTML = '';
+        const first = document.createElement('option');
+        first.value = '';
+        first.innerText = 'Saved preset...';
+        select.appendChild(first);
+        items.forEach((item) => {
+            const op = document.createElement('option');
+            op.value = item.name;
+            op.innerText = item.name;
+            select.appendChild(op);
+        });
+        if (current && items.some((item) => item.name === current)) {
+            select.value = current;
+        }
+    }
+
+    function applyActivityPresetToControls(filters) {
+        const data = filters || {};
+        const setVal = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.value = String(value || '');
+        };
+        setVal('activity-filter-username', data.username || '');
+        setVal('activity-filter-action', data.action || '');
+        setVal('activity-filter-status', data.status_group || '');
+        setVal('activity-filter-from', data.date_from || '');
+        setVal('activity-filter-to', data.date_to || '');
+    }
+
+    async function saveCurrentActivityPreset() {
+        syncActivityStateFromFilters(false);
+        const nameEl = document.getElementById('activity-preset-name');
+        const name = String((nameEl && nameEl.value) || '').trim();
+        if (!name) {
+            setActivityStatus('Preset name required', 'err');
+            return;
+        }
+        const items = readSavedActivityPresets().filter((item) => item.name !== name);
+        items.unshift({ name, filters: getActivityFilterSnapshot() });
+        writeSavedActivityPresets(items.slice(0, 30));
+        if (nameEl) nameEl.value = '';
+        refreshActivityPresetOptions();
+        const select = document.getElementById('activity-preset-select');
+        if (select) select.value = name;
+        setActivityStatus(`Preset "${name}" saved`, 'ok');
+    }
+
+    async function loadSelectedActivityPreset() {
+        const select = document.getElementById('activity-preset-select');
+        const name = String((select && select.value) || '').trim();
+        if (!name) return;
+        const item = readSavedActivityPresets().find((row) => row.name === name);
+        if (!item) return;
+        applyActivityPresetToControls(item.filters || {});
+        await loadAdminActivity({ resetOffset: true });
+        setActivityStatus(`Preset "${name}" loaded`, 'ok');
+    }
+
+    function deleteSelectedActivityPreset() {
+        const select = document.getElementById('activity-preset-select');
+        const name = String((select && select.value) || '').trim();
+        if (!name) return;
+        const items = readSavedActivityPresets().filter((row) => row.name !== name);
+        writeSavedActivityPresets(items);
+        refreshActivityPresetOptions();
+        setActivityStatus(`Preset "${name}" deleted`, 'ok');
+    }
+
+    function renderActivityAnomalies(summary) {
+        const listEl = document.getElementById('activity-anomaly-list');
+        const windowEl = document.getElementById('activity-anomaly-window');
+        if (!listEl || !windowEl) return;
+        const anomalies = Array.isArray(summary && summary.anomalies) ? summary.anomalies : [];
+        const win = (summary && summary.anomaly_window) || {};
+        const minutes = Math.max(0, Number(win.minutes || 0));
+        windowEl.innerText = `Window: ${String(win.from || '-')} -> ${String(win.to || '-')} (${minutes} min)`;
+        listEl.innerHTML = '';
+        if (!anomalies.length) {
+            const li = document.createElement('li');
+            li.className = 'muted';
+            li.innerText = 'Belum ada anomali.';
+            listEl.appendChild(li);
+            return;
+        }
+        anomalies.forEach((row) => {
+            const li = document.createElement('li');
+            const sev = String(row.severity || 'warning').toLowerCase();
+            li.className = `anomaly-${sev}`;
+            const title = document.createElement('strong');
+            title.innerText = `${String(row.title || 'Anomaly')} (${String(row.count || 0)})`;
+            const msg = document.createElement('span');
+            msg.innerText = String(row.message || '-');
+            li.appendChild(title);
+            li.appendChild(msg);
+            listEl.appendChild(li);
+        });
+    }
+
+    function setActivityChainStatus(message, kind = 'muted') {
+        const el = document.getElementById('activity-chain-status');
+        if (!el) return;
+        el.className = `muted ${kind}`.trim();
+        el.innerText = message || '';
+    }
+
+    async function verifyActivityChain() {
+        if (!isAdminRole()) return;
+        setActivityChainStatus('Chain: verifying...');
+        const out = await fetchJson('/api/admin/activity/chain/verify?limit=5000');
+        if (!out) return;
+        if (!out.ok) {
+            setActivityChainStatus('Chain: broken', 'err');
+            return;
+        }
+        const d = out.data || {};
+        const checked = Math.max(0, Number(d.checked || 0));
+        setActivityChainStatus(`Chain: ok (${checked} entries)`, 'ok');
+    }
+
+    function setSessionStatus(message, kind = 'muted') {
+        const el = document.getElementById('session-status');
+        if (!el) return;
+        el.className = `muted ${kind}`.trim();
+        el.innerText = message || '';
+    }
+
+    async function forceLogoutUser(username) {
+        const actor = String(username || '').trim();
+        if (!actor) return;
+        const out = await fetchJson('/api/admin/sessions/force-logout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: actor }),
+        });
+        if (out && out.ok) {
+            setSessionStatus(`Forced logout ${actor} (${String(out.data.revoked_sessions || 0)} sessions)`, 'ok');
+            await loadAdminSessions();
+            await loadAdminActivity({ resetOffset: false });
+        } else {
+            setSessionStatus((out && out.data && out.data.message) || `Force logout failed for ${actor}`, 'err');
+        }
+    }
+
+    function buildSessionRow(row) {
+        const tr = document.createElement('tr');
+        tr.appendChild(rowCell(String(row.last_seen || '-'), 'Last Seen'));
+        tr.appendChild(rowCell(String(row.username || '-'), 'Username'));
+        tr.appendChild(rowCell(String(row.ip_address || '-'), 'IP'));
+        tr.appendChild(rowCell(String(row.user_agent || '-'), 'User Agent'));
+        tr.appendChild(rowCell(String(row.issued_at || '-'), 'Issued At'));
+        const actionTd = document.createElement('td');
+        actionTd.setAttribute('data-label', 'Action');
+        const btn = document.createElement('button');
+        btn.className = 'btn danger';
+        btn.type = 'button';
+        btn.innerText = 'Force Logout User';
+        btn.addEventListener('click', () => forceLogoutUser(String(row.username || '')));
+        actionTd.appendChild(btn);
+        tr.appendChild(actionTd);
+        return tr;
+    }
+
+    async function loadAdminSessions() {
+        if (!isAdminRole()) return;
+        const usernameEl = document.getElementById('session-filter-username');
+        sessionState.username = String((usernameEl && usernameEl.value) || '').trim();
+        const q = new URLSearchParams();
+        q.set('limit', String(sessionState.limit || 100));
+        q.set('offset', String(sessionState.offset || 0));
+        q.set('active_only', '1');
+        if (sessionState.username) q.set('username', sessionState.username);
+        const out = await fetchJson(`/api/admin/sessions?${q.toString()}`);
+        if (!out || !out.ok) {
+            setSessionStatus((out && out.data && out.data.message) || 'Session load failed', 'err');
+            return;
+        }
+        const rows = Array.isArray(out.data && out.data.items) ? out.data.items : [];
+        const tbody = document.querySelector('#admin-session-table tbody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        if (!rows.length) {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.colSpan = 6;
+            td.className = 'muted';
+            td.innerText = 'Tidak ada session aktif.';
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+            setSessionStatus('0 active sessions');
+            return;
+        }
+        rows.forEach((row) => tbody.appendChild(buildSessionRow(row)));
+        setSessionStatus(`${rows.length} active sessions loaded`, 'ok');
+    }
+
+    function setAlertStatus(message, kind = 'muted') {
+        const el = document.getElementById('alert-status');
+        if (!el) return;
+        el.className = `muted ${kind}`.trim();
+        el.innerText = String(message || '');
+    }
+
+    function fmtAlertPrice(value) {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return '-';
+        if (Math.abs(n) >= 1000) return n.toLocaleString(undefined, { maximumFractionDigits: 4 });
+        if (Math.abs(n) >= 1) return n.toFixed(6);
+        return n.toFixed(8);
+    }
+
+    function buildAlertRuleRow(rule) {
+        const tr = document.createElement('tr');
+        tr.appendChild(rowCell(String(rule.id || '-'), 'ID'));
+        tr.appendChild(rowCell(String(rule.name || '-'), 'Name'));
+        tr.appendChild(rowCell(String(rule.scope || '-'), 'Scope'));
+        tr.appendChild(rowCell(String(rule.market_kind || '-'), 'Kind'));
+        tr.appendChild(rowCell(String(rule.symbol || '-'), 'Symbol'));
+        tr.appendChild(rowCell(String(rule.condition || '-'), 'Condition'));
+        tr.appendChild(rowCell(fmtAlertPrice(rule.target_price), 'Target'));
+        tr.appendChild(rowCell(String(rule.cooldown_sec || '-'), 'Cooldown'));
+        tr.appendChild(rowCell(String(rule.notify_channel || '-'), 'Channel'));
+        tr.appendChild(rowCell(rule.is_active ? 'yes' : 'no', 'Active'));
+        tr.appendChild(rowCell(String(rule.last_triggered_at || '-'), 'Last Trigger'));
+
+        const actionTd = document.createElement('td');
+        actionTd.setAttribute('data-label', 'Action');
+        const toggleBtn = document.createElement('button');
+        toggleBtn.className = `btn ${rule.is_active ? 'danger' : 'primary'}`;
+        toggleBtn.type = 'button';
+        toggleBtn.innerText = rule.is_active ? 'Disable' : 'Enable';
+        toggleBtn.addEventListener('click', () => toggleAlertRuleActive(rule.id, !rule.is_active));
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn danger';
+        delBtn.type = 'button';
+        delBtn.innerText = 'Delete';
+        delBtn.addEventListener('click', () => deleteAlertRule(rule.id));
+        actionTd.appendChild(toggleBtn);
+        actionTd.appendChild(delBtn);
+        tr.appendChild(actionTd);
+        return tr;
+    }
+
+    function renderAlertRulesTable(rows) {
+        const tbody = document.querySelector('#alert-rules-table tbody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        if (!Array.isArray(rows) || rows.length === 0) {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.colSpan = 12;
+            td.className = 'muted';
+            td.innerText = 'Belum ada alert rule.';
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+            return;
+        }
+        rows.forEach((rule) => tbody.appendChild(buildAlertRuleRow(rule || {})));
+    }
+
+    function renderAlertEventsTable(rows) {
+        const tbody = document.querySelector('#alert-events-table tbody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        if (!Array.isArray(rows) || rows.length === 0) {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.colSpan = 10;
+            td.className = 'muted';
+            td.innerText = 'Belum ada alert event.';
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+            return;
+        }
+        rows.forEach((row) => {
+            const tr = document.createElement('tr');
+            tr.appendChild(rowCell(String(row.timestamp || '-'), 'Time'));
+            tr.appendChild(rowCell(String(row.rule_id || '-'), 'Rule ID'));
+            tr.appendChild(rowCell(String(row.username || '-'), 'User'));
+            tr.appendChild(rowCell(String(row.symbol || '-'), 'Symbol'));
+            tr.appendChild(rowCell(String(row.condition || '-'), 'Condition'));
+            tr.appendChild(rowCell(fmtAlertPrice(row.target_price), 'Target'));
+            tr.appendChild(rowCell(fmtAlertPrice(row.trigger_price), 'Trigger'));
+            tr.appendChild(rowCell(String(row.notify_channel || '-'), 'Channel'));
+            tr.appendChild(rowCell(row.delivered ? 'sent' : 'portal', 'Status'));
+            tr.appendChild(rowCell(String(row.message || '-'), 'Message'));
+            tbody.appendChild(tr);
+        });
+    }
+
+    function scheduleAlertRefresh(delayMs = 500) {
+        if (alertRefreshTimer) {
+            clearTimeout(alertRefreshTimer);
+            alertRefreshTimer = null;
+        }
+        alertRefreshTimer = setTimeout(async () => {
+            alertRefreshTimer = null;
+            await loadAlertEvents();
+            await loadAlertRules();
+        }, Math.max(150, Number(delayMs) || 500));
+    }
+
+    async function loadAlertRules() {
+        if (!isAdminRole()) return;
+        const out = await fetchJson('/api/alerts/rules?all=1&limit=300');
+        if (!out || !out.ok) {
+            setAlertStatus((out && out.data && out.data.message) || 'Load rules failed', 'err');
+            return;
+        }
+        const items = Array.isArray(out.data && out.data.items) ? out.data.items : [];
+        alertState.rules = items;
+        renderAlertRulesTable(items);
+        setAlertStatus(`Rules loaded: ${items.length}`, 'ok');
+    }
+
+    async function loadAlertEvents() {
+        if (!isAdminRole()) return;
+        const out = await fetchJson('/api/alerts/events?all=1&limit=100');
+        if (!out || !out.ok) return;
+        const items = Array.isArray(out.data && out.data.items) ? out.data.items : [];
+        alertState.events = items;
+        renderAlertEventsTable(items);
+    }
+
+    async function refreshAlertPanel() {
+        if (!isAdminRole()) return;
+        await loadAlertRules();
+        await loadAlertEvents();
+    }
+
+    async function createAlertRule() {
+        if (!isAdminRole()) return;
+        const marketKind = String((document.getElementById('alert-kind')?.value || 'crypto')).trim().toLowerCase();
+        const normalizedSymbol = normalizeAlertSymbol(
+            marketKind,
+            document.getElementById('alert-symbol')?.value || '',
+        );
+        const payload = {
+            name: String((document.getElementById('alert-name')?.value || '')).trim(),
+            market_kind: marketKind,
+            symbol: normalizedSymbol,
+            condition: String((document.getElementById('alert-condition')?.value || 'cross_above')).trim().toLowerCase(),
+            target_price: Number(document.getElementById('alert-target-price')?.value || 0),
+            cooldown_sec: Number(document.getElementById('alert-cooldown-sec')?.value || 300),
+            notify_channel: String((document.getElementById('alert-channel')?.value || 'portal')).trim().toLowerCase(),
+            scope: String((document.getElementById('alert-scope')?.value || 'global')).trim().toLowerCase(),
+            is_active: true,
+        };
+        if (!payload.symbol || !Number.isFinite(payload.target_price) || payload.target_price <= 0) {
+            setAlertStatus('Symbol dan target price wajib valid', 'err');
+            return;
+        }
+        const symbolEl = document.getElementById('alert-symbol');
+        if (symbolEl) symbolEl.value = payload.symbol;
+        const out = await fetchJson('/api/alerts/rules', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        if (!out || !out.ok) {
+            setAlertStatus((out && out.data && out.data.message) || 'Create rule failed', 'err');
+            return;
+        }
+        setAlertStatus(`Rule created: ${String((out.data.rule || {}).id || '-')}`, 'ok');
+        document.getElementById('alert-name').value = '';
+        document.getElementById('alert-symbol').value = '';
+        document.getElementById('alert-target-price').value = '';
+        await refreshAlertPanel();
+    }
+
+    async function toggleAlertRuleActive(ruleId, nextActive) {
+        if (!isAdminRole()) return;
+        const out = await fetchJson(`/api/alerts/rules/${encodeURIComponent(String(ruleId || ''))}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_active: Boolean(nextActive) }),
+        });
+        if (!out || !out.ok) {
+            setAlertStatus((out && out.data && out.data.message) || 'Toggle rule failed', 'err');
+            return;
+        }
+        setAlertStatus(`Rule ${ruleId} ${nextActive ? 'enabled' : 'disabled'}`, 'ok');
+        await refreshAlertPanel();
+    }
+
+    async function deleteAlertRule(ruleId) {
+        if (!isAdminRole()) return;
+        const out = await fetchJson(`/api/alerts/rules/${encodeURIComponent(String(ruleId || ''))}`, {
+            method: 'DELETE',
+        });
+        if (!out || !out.ok) {
+            setAlertStatus((out && out.data && out.data.message) || 'Delete rule failed', 'err');
+            return;
+        }
+        setAlertStatus(`Rule ${ruleId} deleted`, 'ok');
+        await refreshAlertPanel();
+    }
+
+    async function evaluateAlertRulesNow() {
+        if (!isAdminRole()) return;
+        const out = await fetchJson('/api/alerts/evaluate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh: true }),
+        });
+        if (!out || !out.ok) {
+            setAlertStatus((out && out.data && out.data.message) || 'Evaluate alert failed', 'err');
+            return;
+        }
+        const result = (out.data && out.data.result) || {};
+        const checked = Math.max(0, Number(result.checked || 0));
+        const triggered = Math.max(0, Number(result.triggered || 0));
+        setAlertStatus(`Evaluate done: checked=${checked} triggered=${triggered}`, 'ok');
+        await loadAlertEvents();
+    }
+
+    function renderActivityTopList(listId, rows, textKey) {
+        const listEl = document.getElementById(listId);
+        if (!listEl) return;
+        listEl.innerHTML = '';
+        if (!Array.isArray(rows) || rows.length === 0) {
+            const li = document.createElement('li');
+            li.className = 'muted';
+            li.innerText = 'Belum ada data.';
+            listEl.appendChild(li);
+            return;
+        }
+        rows.forEach((row) => {
+            const li = document.createElement('li');
+            const left = document.createElement('span');
+            left.className = 'activity-top-name';
+            left.innerText = String((row && row[textKey]) || '-');
+            const right = document.createElement('strong');
+            right.className = 'activity-top-count';
+            right.innerText = String(Math.max(0, Number((row && row.count) || 0)));
+            li.appendChild(left);
+            li.appendChild(right);
+            listEl.appendChild(li);
+        });
+    }
+
+    function renderActivityStats(summary) {
+        const data = summary || {};
+        const statusMix = data.status_mix || {};
+        const riskMix = data.risk_mix || {};
+        const setText = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.innerText = String(value);
+        };
+        setText('activity-stat-total', Math.max(0, Number(data.total_rows || 0)));
+        setText('activity-stat-2xx', Math.max(0, Number(statusMix['2xx'] || 0)));
+        setText('activity-stat-4xx', Math.max(0, Number(statusMix['4xx'] || 0)));
+        setText('activity-stat-5xx', Math.max(0, Number(statusMix['5xx'] || 0)));
+        setText('activity-stat-sensitive', Math.max(0, Number(riskMix.sensitive || 0)));
+        renderActivityTopList('activity-top-users', data.top_users || [], 'username');
+        renderActivityTopList('activity-top-actions', data.top_actions || [], 'action');
+        renderActivityTrend(data.trend || {});
+        renderActivityAnomalies(data);
+    }
+
+    async function loadAdminActivityStats() {
+        if (!isAdminRole()) return;
+        const q = new URLSearchParams(buildActivityQuery(activityState));
+        q.set('top_n', '5');
+        const out = await fetchJson(`/api/admin/activity/stats?${q.toString()}`);
+        if (!out || !out.ok) return;
+        renderActivityStats(out.data || {});
+    }
+
+    function updateActivityPager(total, offset, limit, hasMore) {
+        const prevBtn = document.getElementById('activity-prev-btn');
+        const nextBtn = document.getElementById('activity-next-btn');
+        const pageInfo = document.getElementById('activity-page-info');
+        const safeTotal = Math.max(0, Number(total || 0));
+        const safeLimit = Math.max(1, Number(limit || ACTIVITY_PAGE_SIZE));
+        const safeOffset = Math.max(0, Number(offset || 0));
+        const page = Math.floor(safeOffset / safeLimit) + 1;
+        const pages = Math.max(1, Math.ceil(safeTotal / safeLimit));
+        if (prevBtn) prevBtn.disabled = safeOffset <= 0;
+        if (nextBtn) nextBtn.disabled = !Boolean(hasMore);
+        if (pageInfo) pageInfo.innerText = `Page ${page}/${pages} | ${safeTotal} rows`;
+    }
+
+    async function loadAdminActivity({ resetOffset = false } = {}) {
+        if (!isAdminRole()) return;
+        syncActivityStateFromFilters(resetOffset);
+        setActivityStatus('Loading activity...');
+
+        const qs = buildActivityQuery(activityState);
+        const out = await fetchJson(`/api/admin/activity?${qs}`);
+        if (!out || !out.ok) {
+            setActivityStatus((out && out.data && out.data.message) || 'Activity load failed', 'err');
+            return;
+        }
+        const data = out.data || {};
+        const rows = Array.isArray(data.items) ? data.items : [];
+        activityState.total = Math.max(0, Number(data.total || 0));
+        activityState.limit = Math.max(1, Number(data.limit || activityState.limit || ACTIVITY_PAGE_SIZE));
+        activityState.offset = Math.max(0, Number(data.offset || 0));
+        activityState.has_more = Boolean(data.has_more);
+        renderActivityTable(rows);
+        updateActivityPager(activityState.total, activityState.offset, activityState.limit, activityState.has_more);
+        await loadAdminActivityStats();
+        setActivityStatus(`Loaded ${rows.length} rows`, 'ok');
+    }
+
+    function parseDownloadFileNameFromHeaders(res, fallbackName) {
+        try {
+            const header = String(res.headers.get('content-disposition') || '');
+            const m = header.match(/filename=\"?([^\";]+)\"?/i);
+            if (m && m[1]) return m[1];
+        } catch (_) {}
+        return fallbackName;
+    }
+
+    async function exportAdminActivityCsv() {
+        if (!isAdminRole()) return;
+        syncActivityStateFromFilters(false);
+        setActivityStatus('Preparing CSV export...');
+        const exportParams = {
+            ...activityState,
+            limit: 5000,
+            offset: 0,
+        };
+        const qs = buildActivityQuery(exportParams);
+        const res = await fetch(`/api/admin/activity/export.csv?${qs}`, {
+            method: 'GET',
+            headers: authHeaders({}),
+        });
+        if (res.status === 401) {
+            token = null;
+            try { sessionStorage.removeItem('elara_token_mem'); } catch (_) {}
+            try { localStorage.removeItem('elara_token'); } catch (_) {}
+            window.location.href = '/login';
+            return;
+        }
+        if (!res.ok) {
+            const text = await res.text().catch(() => '');
+            setActivityStatus(text || `Export failed (${res.status})`, 'err');
+            return;
+        }
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = parseDownloadFileNameFromHeaders(
+            res,
+            `elara_user_activity_${new Date().toISOString().replace(/[:.]/g, '-')}.csv`
+        );
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        setActivityStatus('CSV exported', 'ok');
+    }
+
+    function buildUserRow(user) {
+        const tr = document.createElement('tr');
+        tr.appendChild(rowCell(String(user.id || '-'), 'ID'));
+        tr.appendChild(rowCell(String(user.email || '-'), 'Email'));
+
+        const nameTd = document.createElement('td');
+        nameTd.setAttribute('data-label', 'Name');
+        const nameInput = document.createElement('input');
+        nameInput.className = 'table-input';
+        nameInput.value = String(user.name || '');
+        nameTd.appendChild(nameInput);
+        tr.appendChild(nameTd);
+
+        const roleTd = document.createElement('td');
+        roleTd.setAttribute('data-label', 'Role');
+        const roleSel = document.createElement('select');
+        roleSel.className = 'table-select';
+        ['user', 'admin', 'superuser'].forEach((r) => {
+            const op = document.createElement('option');
+            op.value = r;
+            op.textContent = r;
+            if (r === (user.role || 'user')) op.selected = true;
+            roleSel.appendChild(op);
+        });
+        roleTd.appendChild(roleSel);
+        tr.appendChild(roleTd);
+
+        const passTd = document.createElement('td');
+        passTd.setAttribute('data-label', 'Password Reset');
+        const passInput = document.createElement('input');
+        passInput.className = 'table-input';
+        passInput.type = 'password';
+        passInput.placeholder = 'new password';
+        passTd.appendChild(passInput);
+        tr.appendChild(passTd);
+
+        const actionTd = document.createElement('td');
+        actionTd.setAttribute('data-label', 'Action');
+        const saveBtn = document.createElement('button');
+        saveBtn.className = 'btn';
+        saveBtn.type = 'button';
+        saveBtn.innerText = 'Save';
+        saveBtn.onclick = async () => {
+            const body = {
+                role: roleSel.value,
+                name: nameInput.value.trim(),
+            };
+            if (passInput.value.trim()) body.password = passInput.value.trim();
+            const out = await fetchJson(`/api/admin/users/${user.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+            const statusEl = document.getElementById('admin-status');
+            if (out && out.ok) {
+                statusEl.className = 'muted ok';
+                statusEl.innerText = `User ${user.email} updated`;
+                passInput.value = '';
+                await loadAdminUsers();
+                await loadAdminActivity({ resetOffset: true });
+            } else {
+                statusEl.className = 'muted err';
+                statusEl.innerText = (out && out.data && out.data.message) || 'Update gagal';
+            }
+        };
+        actionTd.appendChild(saveBtn);
+        tr.appendChild(actionTd);
+        return tr;
+    }
+
+    async function loadAdminUsers() {
+        if (!isAdminRole()) return;
+        const out = await fetchJson('/api/admin/users?limit=500');
+        if (!out || !out.ok) return;
+        const rows = out.data.users || [];
+        const tbody = document.querySelector('#users-table tbody');
+        tbody.innerHTML = '';
+        rows.forEach((u) => tbody.appendChild(buildUserRow(u)));
+    }
+
+    async function loadAdminDash() {
+        if (!isAdminRole()) return;
+        const out = await fetchJson('/api/dashboard/admin');
+        if (!out || !out.ok) return;
+        const d = out.data || {};
+        const roles = d.users_by_role || {};
+        const tm = d.trading_metrics || {};
+        const h = d.health || {};
+        const sa = d.skill_analytics || {};
+        const cpuPct = h.cpu_pct == null ? Number.NaN : toNum(h.cpu_pct, Number.NaN);
+        const memPct = h.mem_pct == null ? Number.NaN : toNum(h.mem_pct, Number.NaN);
+        const dbRatePerMin = toNum(h.db_lock_rate_per_min, 0);
+        const dbContentionRatePerMin = toNum(h.db_write_lock_contention_rate_per_min, 0);
+        const cpuEl = document.getElementById('admin-health-cpu');
+        const memEl = document.getElementById('admin-health-mem');
+        const dbRateEl = document.getElementById('admin-health-dblocks');
+        const dbContentionEl = document.getElementById('admin-health-db-contention');
+
+        document.getElementById('admin-users-total').innerText = String(toNum(d.users_total, 0));
+        document.getElementById('admin-users-admin').innerText = String(toNum(roles.admin, 0));
+        document.getElementById('admin-users-super').innerText = String(toNum(roles.superuser, 0));
+        document.getElementById('admin-stat-equity').innerText = `$${toNum(tm.equity, 0).toFixed(2)}`;
+        document.getElementById('admin-stat-winrate').innerText = `${(toNum(tm.win_rate, 0) * 100).toFixed(2)}%`;
+        document.getElementById('admin-stat-trades').innerText = `${Math.trunc(toNum(tm.trade_count, 0))}`;
+        if (cpuEl) cpuEl.innerText = Number.isFinite(cpuPct) ? `${cpuPct.toFixed(1)}%` : 'n/a';
+        if (memEl) memEl.innerText = Number.isFinite(memPct) ? `${memPct.toFixed(1)}%` : 'n/a';
+        applyMetricSeverity(cpuEl, cpuPct, HEALTH_THRESHOLDS.cpuWarn, HEALTH_THRESHOLDS.cpuBad);
+        applyMetricSeverity(memEl, memPct, HEALTH_THRESHOLDS.memWarn, HEALTH_THRESHOLDS.memBad);
+        setMetricTooltip(cpuEl, 'CPU', cpuPct, HEALTH_THRESHOLDS.cpuWarn, HEALTH_THRESHOLDS.cpuBad, '%', 1);
+        setMetricTooltip(memEl, 'RAM', memPct, HEALTH_THRESHOLDS.memWarn, HEALTH_THRESHOLDS.memBad, '%', 1);
+        if (dbRateEl) dbRateEl.innerText = `${dbRatePerMin.toFixed(2)}`;
+        if (dbContentionEl) dbContentionEl.innerText = `${dbContentionRatePerMin.toFixed(2)}`;
+        applyMetricSeverity(dbRateEl, dbRatePerMin, HEALTH_THRESHOLDS.dbRateWarn, HEALTH_THRESHOLDS.dbRateBad);
+        applyMetricSeverity(
+            dbContentionEl,
+            dbContentionRatePerMin,
+            HEALTH_THRESHOLDS.dbContentionWarn,
+            HEALTH_THRESHOLDS.dbContentionBad
+        );
+        setMetricTooltip(dbRateEl, 'DB Locks', dbRatePerMin, HEALTH_THRESHOLDS.dbRateWarn, HEALTH_THRESHOLDS.dbRateBad, '/min', 2);
+        setMetricTooltip(
+            dbContentionEl,
+            'DB Contention',
+            dbContentionRatePerMin,
+            HEALTH_THRESHOLDS.dbContentionWarn,
+            HEALTH_THRESHOLDS.dbContentionBad,
+            '/min',
+            2
+        );
+        document.getElementById('admin-health-skill-profile').innerText = String(sa.profile || '-');
+        document.getElementById('admin-health-skill-hitrate').innerText = `${toNum(sa.route_hit_rate_pct, 0).toFixed(2)}%`;
+        document.getElementById('admin-health-skill-blockrate').innerText = `${toNum(sa.policy_block_rate_pct, 0).toFixed(2)}%`;
+        if (d && d.market_realtime && !lastMarketPayload) {
+            renderRealtimeMarket(d.market_realtime);
+        }
+    }
+
+    async function createUser() {
+        if (!isAdminRole()) return;
+        const email = document.getElementById('new-email').value.trim();
+        const name = document.getElementById('new-name').value.trim();
+        const password = document.getElementById('new-password').value.trim();
+        const role = document.getElementById('new-role').value;
+        const statusEl = document.getElementById('admin-status');
+        if (!email || !password) {
+            statusEl.className = 'muted err';
+            statusEl.innerText = 'Email/password wajib';
+            return;
+        }
+        const out = await fetchJson('/api/admin/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, name, password, role }),
+        });
+        if (out && out.ok) {
+            statusEl.className = 'muted ok';
+            statusEl.innerText = `User ${email} created`;
+            document.getElementById('new-password').value = '';
+            await loadAdminUsers();
+            await loadAdminDash();
+            await loadAdminActivity({ resetOffset: true });
+            return;
+        }
+        statusEl.className = 'muted err';
+        statusEl.innerText = (out && out.data && out.data.message) || 'Create user gagal';
+    }
+
+    async function sendQuickCommand() {
+        const input = document.getElementById('quick-command');
+        const statusEl = document.getElementById('cmd-status');
+        const command = input.value.trim();
+        if (!command) return;
+        statusEl.className = 'muted';
+        statusEl.innerText = 'sending...';
+        const out = await fetchJson('/api/control', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ command }),
+        });
+        if (out && out.ok) {
+            statusEl.className = 'muted ok';
+            statusEl.innerText = 'ok';
+            input.value = '';
+            return;
+        }
+        statusEl.className = 'muted err';
+        statusEl.innerText = (out && out.data && out.data.message) || 'failed';
+    }
+
+    async function logout() {
+        try { await fetchJson('/api/logout', { method: 'POST' }); } catch (_) {}
+        try {
+            if (marketRefreshTimer) {
+                clearInterval(marketRefreshTimer);
+                marketRefreshTimer = null;
+            }
+        } catch (_) {}
+        stopDashboardRefreshLoop();
+        if (activityRefreshTimer) {
+            clearTimeout(activityRefreshTimer);
+            activityRefreshTimer = null;
+        }
+        try {
+            if (adminActivitySocket) {
+                adminActivitySocket.close();
+                adminActivitySocket = null;
+            }
+        } catch (_) {}
+        marketSocketConnected = false;
+        stopMarketSocketPingLoop();
+        if (alertRefreshTimer) {
+            clearTimeout(alertRefreshTimer);
+            alertRefreshTimer = null;
+        }
+        setMarketStreamStatus('offline');
+        token = null;
+        try { sessionStorage.removeItem('elara_token_mem'); } catch (_) {}
+        try { localStorage.removeItem('elara_token'); } catch (_) {}
+        window.location.href = '/login';
+    }
+
+    document.getElementById('view-user-btn').addEventListener('click', () => setWorkspaceView('user'));
+    document.getElementById('view-admin-btn').addEventListener('click', () => setWorkspaceView('admin'));
+    document.getElementById('create-user-btn').addEventListener('click', createUser);
+    document.getElementById('send-command').addEventListener('click', sendQuickCommand);
+    document.getElementById('quick-command').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') sendQuickCommand();
+    });
+    document.getElementById('logout-btn').addEventListener('click', logout);
+    const legacyBtn = document.getElementById('open-legacy');
+    if (legacyBtn) {
+        legacyBtn.addEventListener('click', () => { window.location.href = '/dashboard'; });
+    }
+    const terminalBtn = document.getElementById('open-terminal');
+    if (terminalBtn) {
+        terminalBtn.addEventListener('click', () => { window.location.href = '/terminal'; });
+    }
+    document.getElementById('open-account').addEventListener('click', () => { window.location.href = '/account'; });
+    document.getElementById('theme-toggle-btn').addEventListener('click', toggleTheme);
+    document.getElementById('alert-create-btn').addEventListener('click', createAlertRule);
+    document.getElementById('alert-refresh-btn').addEventListener('click', refreshAlertPanel);
+    document.getElementById('alert-evaluate-btn').addEventListener('click', evaluateAlertRulesNow);
+    document.getElementById('alert-kind').addEventListener('change', refreshAlertSymbolSuggestions);
+    document.getElementById('alert-symbol').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') createAlertRule();
+    });
+    document.getElementById('alert-symbol').addEventListener('blur', () => {
+        const kind = document.getElementById('alert-kind')?.value || 'crypto';
+        const normalized = normalizeAlertSymbol(kind, document.getElementById('alert-symbol')?.value || '');
+        if (normalized) document.getElementById('alert-symbol').value = normalized;
+    });
+    document.getElementById('alert-target-price').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') createAlertRule();
+    });
+    document.getElementById('activity-apply-btn').addEventListener('click', () => loadAdminActivity({ resetOffset: true }));
+    document.getElementById('activity-reset-btn').addEventListener('click', async () => {
+        resetActivityFilters();
+        await loadAdminActivity({ resetOffset: true });
+    });
+    document.getElementById('activity-export-btn').addEventListener('click', exportAdminActivityCsv);
+    document.getElementById('activity-prev-btn').addEventListener('click', async () => {
+        if (activityState.offset <= 0) return;
+        activityState.offset = Math.max(0, activityState.offset - activityState.limit);
+        await loadAdminActivity({ resetOffset: false });
+    });
+    document.getElementById('activity-next-btn').addEventListener('click', async () => {
+        if (!activityState.has_more) return;
+        activityState.offset += activityState.limit;
+        await loadAdminActivity({ resetOffset: false });
+    });
+    document.getElementById('activity-filter-username').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') loadAdminActivity({ resetOffset: true });
+    });
+    document.getElementById('activity-filter-action').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') loadAdminActivity({ resetOffset: true });
+    });
+    document.getElementById('activity-filter-status').addEventListener('change', () => {
+        loadAdminActivity({ resetOffset: true });
+    });
+    document.getElementById('activity-filter-from').addEventListener('change', () => {
+        loadAdminActivity({ resetOffset: true });
+    });
+    document.getElementById('activity-filter-to').addEventListener('change', () => {
+        loadAdminActivity({ resetOffset: true });
+    });
+    document.getElementById('activity-preset-1h').addEventListener('click', () => applyActivityRangePreset('1h'));
+    document.getElementById('activity-preset-today').addEventListener('click', () => applyActivityRangePreset('today'));
+    document.getElementById('activity-preset-7d').addEventListener('click', () => applyActivityRangePreset('7d'));
+    document.getElementById('activity-preset-week').addEventListener('click', () => applyActivityRangePreset('week'));
+    document.getElementById('activity-preset-month').addEventListener('click', () => applyActivityRangePreset('month'));
+    document.getElementById('activity-preset-save-btn').addEventListener('click', saveCurrentActivityPreset);
+    document.getElementById('activity-preset-load-btn').addEventListener('click', loadSelectedActivityPreset);
+    document.getElementById('activity-preset-delete-btn').addEventListener('click', deleteSelectedActivityPreset);
+    document.getElementById('activity-chain-verify-btn').addEventListener('click', verifyActivityChain);
+    document.getElementById('activity-live-toggle-btn').addEventListener('click', async () => {
+        const next = !activityAutoRefreshEnabled;
+        setActivityAutoRefreshState(next, next ? 'Auto refresh resumed' : 'Auto refresh paused');
+        if (next) {
+            await loadAdminActivity({ resetOffset: false });
+        }
+    });
+    document.getElementById('activity-live-interval').addEventListener('change', () => {
+        const intervalMs = getDashboardRefreshIntervalMs();
+        setActivityAutoRefreshState(activityAutoRefreshEnabled, `Auto refresh interval set to ${Math.round(intervalMs / 1000)}s`);
+        startDashboardRefreshLoop();
+    });
+    document.getElementById('session-refresh-btn').addEventListener('click', loadAdminSessions);
+    document.getElementById('session-filter-username').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') loadAdminSessions();
+    });
+    document.getElementById('activity-detail-close-btn').addEventListener('click', closeActivityDetail);
+    document.getElementById('activity-detail-copy-btn').addEventListener('click', copyActivityDetailJson);
+    document.getElementById('activity-detail-modal').addEventListener('click', (event) => {
+        if (event.target && event.target.id === 'activity-detail-modal') {
+            closeActivityDetail();
+        }
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            closeActivityDetail();
+        }
+    });
+    window.addEventListener('resize', () => {
+        if (!lastMarketPayload) return;
+        try { renderRealtimeMarket(lastMarketPayload); } catch (_) {}
+    });
+
+    (async function init() {
+        initTheme();
+        showLegacyBanner();
+        renderHealthLegends();
+        setMarketStreamStatus('boot');
+        readActivityAutoRefreshSettings();
+        refreshActivityPresetOptions();
+        bindMarketControls();
+        await loadProfile();
+        connectAdminActivityStream();
+        await loadUserDash();
+        await loadRealtimeMarket();
+        await loadDecisionLog();
+        await loadAdminDash();
+        await loadAdminUsers();
+        await loadAdminActivity({ resetOffset: true });
+        await loadAdminSessions();
+        await refreshAlertPanel();
+        await verifyActivityChain();
+        marketRefreshTimer = setInterval(async () => {
+            if (marketSocketConnected) return;
+            await loadRealtimeMarket();
+        }, MARKET_REFRESH_MS);
+        startDashboardRefreshLoop();
+    })();
+</script>
+</body>
+</html>
+
