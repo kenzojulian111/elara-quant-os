@@ -1,0 +1,1089 @@
+/* ==========================================================================
+   Elara Quant OS — Apex Dark Glassmorphism Dashboard Theme
+   ========================================================================== */
+
+:root {
+  --apex-bg-outer: #08090f;
+  --apex-bg-shell: #0d0f17;
+  --apex-bg-sidebar: #0e1018;
+  --apex-bg-card: #131621;
+  --apex-bg-card-elevated: #171b28;
+  --apex-bg-input: #141722;
+  --apex-border: rgba(255, 255, 255, 0.07);
+  --apex-border-highlight: rgba(255, 255, 255, 0.14);
+  --apex-text-primary: #f3f5fb;
+  --apex-text-secondary: #8c93a8;
+  --apex-text-muted: #5c6378;
+  --apex-accent-blue: #6e8efb;
+  --apex-accent-glow: rgba(122, 150, 255, 0.32);
+  --apex-emerald: #2ed573;
+  --apex-emerald-bg: rgba(46, 213, 115, 0.12);
+  --apex-rose: #ff6b81;
+  --apex-rose-bg: rgba(255, 107, 129, 0.12);
+  --apex-amber: #f7b731;
+}
+
+body.apex-body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 75% 8%, rgba(120, 148, 255, 0.18), transparent 28%),
+    radial-gradient(circle at 18% 85%, rgba(88, 108, 220, 0.12), transparent 36%),
+    var(--apex-bg-outer) !important;
+  color: var(--apex-text-primary) !important;
+  font-family: "Inter", "M PLUS 1p", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  -webkit-font-smoothing: antialiased;
+}
+
+body.apex-body[data-apex-mode="light"] {
+  --apex-bg-outer: #eef1f8;
+  --apex-bg-shell: #f7f9fc;
+  --apex-bg-sidebar: #f1f4f9;
+  --apex-bg-card: #ffffff;
+  --apex-bg-card-elevated: #f3f6fb;
+  --apex-bg-input: #ebeff7;
+  --apex-border: rgba(15, 23, 42, 0.08);
+  --apex-border-highlight: rgba(15, 23, 42, 0.15);
+  --apex-text-primary: #0f172a;
+  --apex-text-secondary: #475569;
+  --apex-text-muted: #64748b;
+}
+
+/* Outer Window Frame */
+.apex-window-frame {
+  max-width: 1460px;
+  margin: 22px auto;
+  background: var(--apex-bg-shell);
+  border: 1px solid var(--apex-border-highlight);
+  border-radius: 22px;
+  box-shadow:
+    0 32px 80px rgba(0, 0, 0, 0.65),
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+  overflow: hidden;
+  position: relative;
+}
+
+/* Ambient Light Glow near Top-Right Theme Toggle (as in screenshot) */
+.apex-window-frame::before {
+  content: "";
+  position: absolute;
+  top: -38px;
+  right: 175px;
+  width: 220px;
+  height: 150px;
+  background: radial-gradient(circle, rgba(220, 232, 255, 0.26) 0%, rgba(125, 152, 255, 0.08) 48%, transparent 74%);
+  pointer-events: none;
+  z-index: 2;
+  filter: blur(8px);
+}
+
+/* ======================== SIDEBAR ======================== */
+.apex-sidebar {
+  background: var(--apex-bg-sidebar);
+  border-right: 1px solid var(--apex-border);
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  z-index: 3;
+}
+
+.apex-brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px 12px;
+  border-bottom: 1px solid var(--apex-border);
+}
+
+.apex-brand-left {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.apex-brand-logo {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: linear-gradient(145deg, #ffffff 0%, #aeb9d6 100%);
+  color: #0d0f17;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 15px;
+  box-shadow: 0 4px 14px rgba(255, 255, 255, 0.16);
+}
+
+.apex-brand-name {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--apex-text-primary);
+}
+
+.apex-brand-caret {
+  color: var(--apex-text-muted);
+  font-size: 12px;
+}
+
+/* Search / Command Box */
+.apex-search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--apex-bg-input);
+  border: 1px solid var(--apex-border);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+.apex-search-icon {
+  color: var(--apex-text-muted);
+  font-size: 13px;
+}
+
+.apex-search-box input {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  color: var(--apex-text-primary) !important;
+  font-size: 12.5px;
+  width: 100%;
+  padding: 0 !important;
+}
+
+.apex-search-box input::placeholder {
+  color: var(--apex-text-muted);
+}
+
+.apex-kbd-group {
+  display: inline-flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.apex-kbd {
+  font-size: 10px;
+  font-family: "JetBrains Mono", monospace;
+  color: var(--apex-text-secondary);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--apex-border);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+/* Navigation Groups */
+.apex-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.apex-nav-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--apex-text-muted);
+  padding: 4px 10px 6px;
+}
+
+.apex-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 9px 11px;
+  color: var(--apex-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.apex-nav-btn:hover {
+  color: var(--apex-text-primary);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.apex-nav-btn.is-active {
+  color: var(--apex-text-primary);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  border-color: var(--apex-border-highlight);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+.apex-nav-icon {
+  width: 16px;
+  text-align: center;
+  opacity: 0.85;
+}
+
+/* Verify Device / QR Bottom Card */
+.apex-verify-card {
+  margin-top: auto;
+  background: linear-gradient(180deg, rgba(25, 29, 43, 0.9), rgba(16, 19, 29, 0.95));
+  border: 1px solid var(--apex-border-highlight);
+  border-radius: 14px;
+  padding: 14px;
+  text-align: center;
+}
+
+.apex-verify-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--apex-text-primary);
+  margin: 0 0 4px;
+  text-align: left;
+}
+
+.apex-verify-desc {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--apex-text-secondary);
+  margin: 0 0 12px;
+  text-align: left;
+}
+
+.apex-qr-box {
+  width: 96px;
+  height: 96px;
+  margin: 0 auto 12px;
+  padding: 6px;
+  background: #ffffff;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.apex-qr-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.apex-verify-btn {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--apex-border-highlight);
+  border-radius: 8px;
+  color: var(--apex-text-primary);
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 7px 10px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.apex-verify-btn:hover {
+  background: rgba(255, 255, 255, 0.11);
+}
+
+/* ======================== MAIN CONTENT AREA ======================== */
+.apex-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--apex-bg-shell);
+}
+
+/* Top Header Bar */
+.apex-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 26px;
+  border-bottom: 1px solid var(--apex-border);
+  position: relative;
+  z-index: 3;
+}
+
+.apex-page-title {
+  font-size: 19px;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.apex-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* Theme Pill (Moon / Sun with Glow) */
+.apex-theme-pill {
+  display: inline-flex;
+  align-items: center;
+  background: #151926;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+  box-shadow: 0 0 24px rgba(185, 205, 255, 0.22);
+}
+
+.apex-theme-btn {
+  width: 28px;
+  height: 24px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--apex-text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  transition: all 0.15s ease;
+}
+
+.apex-theme-btn.is-active {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.25);
+}
+
+.apex-bell-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid var(--apex-border);
+  background: var(--apex-bg-card);
+  color: var(--apex-text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.apex-user-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 12px;
+  border-left: 1px solid var(--apex-border);
+}
+
+.apex-user-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--apex-text-primary);
+}
+
+.apex-user-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #6e8efb, #a777e3);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+/* Sub-Header Filter Toolbar */
+.apex-subbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 26px 8px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.apex-range-tabs {
+  display: inline-flex;
+  background: var(--apex-bg-card);
+  border: 1px solid var(--apex-border);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.apex-range-tab {
+  background: transparent;
+  border: none;
+  color: var(--apex-text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.apex-range-tab.is-active {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--apex-text-primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.apex-subbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.apex-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--apex-bg-card);
+  border: 1px solid var(--apex-border-highlight);
+  color: var(--apex-text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 7px 13px;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.apex-pill-btn:hover {
+  background: var(--apex-bg-card-elevated);
+}
+
+/* ======================== DASHBOARD CONTENT GRID ======================== */
+.apex-content {
+  padding: 12px 26px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Top 3 KPI Row */
+.apex-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.apex-card {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(135, 160, 255, 0.07), transparent 60%),
+    var(--apex-bg-card);
+  border: 1px solid var(--apex-border);
+  border-top-color: var(--apex-border-highlight);
+  border-radius: 16px;
+  padding: 18px 20px;
+  position: relative;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
+}
+
+.apex-kpi-label {
+  font-size: 12.5px;
+  color: var(--apex-text-secondary);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.apex-kpi-body {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.apex-kpi-value {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--apex-text-primary);
+}
+
+.apex-delta-badge {
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.apex-delta-up {
+  background: var(--apex-emerald-bg);
+  color: var(--apex-emerald);
+  border: 1px solid rgba(46, 213, 115, 0.24);
+}
+
+.apex-delta-down {
+  background: var(--apex-rose-bg);
+  color: var(--apex-rose);
+  border: 1px solid rgba(255, 107, 129, 0.24);
+}
+
+/* Middle 3-Column Bento Grid */
+.apex-bento-middle {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr 1.05fr;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.apex-bento-center-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Left Card: Total Revenue / Portfolio Equity */
+.apex-revenue-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.apex-rev-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.apex-rev-title {
+  font-size: 13px;
+  color: var(--apex-text-secondary);
+  margin: 0 0 6px;
+}
+
+.apex-rev-big {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin: 0 0 6px;
+}
+
+.apex-rev-period {
+  font-size: 12px;
+  color: var(--apex-text-muted);
+}
+
+.apex-rev-period strong {
+  color: var(--apex-text-primary);
+  margin-right: 6px;
+}
+
+.apex-circle-icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid var(--apex-border-highlight);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--apex-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.apex-progress-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.apex-progress-meta {
+  font-size: 12px;
+  color: var(--apex-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.apex-progress-track {
+  height: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.apex-progress-fill {
+  width: 58%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #748ffc 0%, #ffffff 100%);
+  box-shadow: 0 0 18px rgba(255, 255, 255, 0.65);
+}
+
+.apex-progress-sub {
+  font-size: 11.5px;
+  color: var(--apex-text-muted);
+}
+
+.apex-mini-stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--apex-border);
+}
+
+.apex-mini-stat-label {
+  font-size: 10.5px;
+  color: var(--apex-text-muted);
+  margin-bottom: 4px;
+}
+
+.apex-mini-stat-val {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--apex-text-primary);
+}
+
+.apex-dual-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.apex-action-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--apex-border-highlight);
+  border-radius: 10px;
+  color: var(--apex-text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 9px 12px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.apex-action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Center Top Card: Customer Rating / AI Decision Confidence */
+.apex-rating-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.apex-rating-grid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.apex-rating-kicker {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--apex-text-muted);
+  margin-bottom: 6px;
+}
+
+.apex-rating-score {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.apex-star {
+  color: var(--apex-amber);
+}
+
+.apex-rating-overall {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--apex-text-muted);
+}
+
+.apex-spline-svg {
+  width: 135px;
+  height: 64px;
+  overflow: visible;
+}
+
+.apex-info-banner {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--apex-border);
+  border-radius: 9px;
+  padding: 8px 12px;
+  font-size: 11.5px;
+  color: var(--apex-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Center Bottom Card: User Insight / Operator Readiness Score */
+.apex-insight-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.apex-card-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.apex-card-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.apex-small-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--apex-border-highlight);
+  color: var(--apex-text-primary);
+  font-size: 11px;
+  padding: 5px 11px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.apex-credit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.apex-credit-headline {
+  font-size: 13.5px;
+  color: var(--apex-text-secondary);
+}
+
+.apex-credit-headline strong {
+  color: var(--apex-text-primary);
+  font-weight: 700;
+}
+
+.apex-credit-sub {
+  font-size: 11px;
+  color: var(--apex-text-muted);
+  margin-top: 3px;
+}
+
+.apex-emoji-badge {
+  font-size: 22px;
+}
+
+.apex-seg-bars {
+  display: grid;
+  grid-template-columns: repeat(28, 1fr);
+  gap: 4px;
+  height: 22px;
+  align-items: stretch;
+}
+
+.apex-seg-bar {
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.apex-seg-bar.is-active {
+  background: linear-gradient(180deg, #b8c8ff 0%, #5c7cfa 100%);
+  box-shadow: 0 0 8px rgba(108, 138, 255, 0.45);
+}
+
+/* Right Card: Impressions / Market Realtime Overview */
+.apex-impressions-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.apex-imp-AssetRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.apex-imp-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--apex-border-highlight);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+}
+
+.apex-imp-kicker {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--apex-text-muted);
+  text-transform: uppercase;
+}
+
+.apex-imp-price {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.apex-window-tabs {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--apex-border);
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.apex-window-tab {
+  background: transparent;
+  border: none;
+  color: var(--apex-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.apex-window-tab.is-active {
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--apex-text-primary);
+}
+
+.apex-chart-area {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 10px;
+  height: 140px;
+  align-items: stretch;
+  padding-top: 6px;
+}
+
+.apex-y-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--apex-text-muted);
+}
+
+.apex-candle-bars {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+  align-items: end;
+  height: 100%;
+  padding: 0 6px;
+}
+
+.apex-candle-col {
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.apex-candle-pillar {
+  width: 24px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(120, 140, 220, 0.06) 100%);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.apex-candle-cap {
+  position: absolute;
+  top: 26%;
+  left: 3px;
+  right: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 0 10px #ffffff;
+}
+
+.apex-candle-core {
+  width: 100%;
+  background: linear-gradient(180deg, rgba(165, 184, 255, 0.72) 0%, rgba(92, 112, 198, 0.22) 100%);
+  border-radius: 4px 4px 0 0;
+}
+
+.apex-imp-foot {
+  font-size: 11px;
+  color: var(--apex-text-muted);
+}
+
+/* ======================== BOTTOM TABLE CARD ======================== */
+.apex-table-card {
+  padding: 18px 20px;
+}
+
+.apex-table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  gap: 12px;
+}
+
+.apex-table-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--apex-bg-input);
+  border: 1px solid var(--apex-border);
+  border-radius: 10px;
+  padding: 7px 12px;
+  min-width: 240px;
+}
+
+.apex-table-search input {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  color: var(--apex-text-primary) !important;
+  font-size: 12.5px;
+  width: 100%;
+  padding: 0 !important;
+}
+
+.apex-ledger-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.apex-ledger-table thead th {
+  text-align: left;
+  color: var(--apex-text-muted);
+  font-weight: 500;
+  font-size: 11.5px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-top: 1px solid var(--apex-border);
+  border-bottom: 1px solid var(--apex-border);
+}
+
+.apex-ledger-table tbody td {
+  padding: 12px;
+  border-bottom: 1px solid var(--apex-border);
+  vertical-align: middle;
+}
+
+.apex-user-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.apex-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.apex-avatar-1 {
+  background: linear-gradient(135deg, #4facfe, #00f2fe);
+}
+
+.apex-avatar-2 {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+}
+
+.apex-avatar-3 {
+  background: linear-gradient(135deg, #f093fb, #f5576c);
+}
+
+.apex-user-title {
+  font-weight: 600;
+  color: var(--apex-text-primary);
+}
+
+.apex-user-sub {
+  font-size: 11px;
+  color: var(--apex-text-muted);
+}
+
+.apex-td-muted {
+  color: var(--apex-text-secondary);
+}
+
+.apex-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.apex-status-paid {
+  background: var(--apex-emerald-bg);
+  color: var(--apex-emerald);
+  border: 1px solid rgba(46, 213, 115, 0.25);
+}
+
+.apex-status-pending {
+  background: rgba(247, 183, 49, 0.14);
+  color: var(--apex-amber);
+  border: 1px solid rgba(247, 183, 49, 0.28);
+}
+
+.apex-td-amount {
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 600;
+  color: var(--apex-text-primary);
+}
+
+.apex-icon-btn {
+  background: transparent;
+  border: 1px solid var(--apex-border);
+  color: var(--apex-text-secondary);
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+/* Deep Operational Panels Below Main Bento Fold */
+.apex-ops-divider {
+  margin-top: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--apex-border);
+}
+
+@media (max-width: 1120px) {
+  .apex-window-frame {
+    grid-template-columns: 1fr;
+    margin: 0;
+    border-radius: 0;
+  }
+  .apex-bento-middle,
+  .apex-kpi-row {
+    grid-template-columns: 1fr;
+  }
+}
